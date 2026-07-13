@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SLOOM 맞춤 추천</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --c-bg: #F7F5F2; --c-surface: #FFFFFF; --c-border: #E8E4DF; --c-border-strong: #D0CBC4;
+    --c-text: #1A1714; --c-text-sub: #6B6460; --c-text-muted: #A09890;
+    --c-accent: #3B6EA5; --c-accent-bg: #EBF2FA; --c-accent-text: #1E4D7A;
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+    --font: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  }
+  body { font-family: var(--font); background: var(--c-bg); color: var(--c-text); min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 48px 20px 80px; }
+  .container { width: 100%; max-width: 560px; }
+  .quiz-header { margin-bottom: 36px; }
+  .brand-tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--c-accent-text); background: var(--c-accent-bg); padding: 5px 10px; border-radius: 4px; margin-bottom: 14px; text-transform: uppercase; }
+  .quiz-header h1 { font-size: 26px; font-weight: 700; line-height: 1.35; color: var(--c-text); margin-bottom: 8px; white-space: pre-line; }
+  .quiz-header p { font-size: 14px; color: var(--c-text-sub); line-height: 1.6; }
+  .progress-track { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+  .progress-bar { flex: 1; height: 3px; background: var(--c-border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--c-accent); border-radius: 2px; transition: width 0.35s cubic-bezier(0.4,0,0.2,1); }
+  .progress-label { font-size: 12px; color: var(--c-text-muted); white-space: nowrap; }
+  .step { display: none; }
+  .step.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .q-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--c-text-muted); text-transform: uppercase; margin-bottom: 8px; }
+  .q-text { font-size: 19px; font-weight: 600; color: var(--c-text); line-height: 1.45; margin-bottom: 20px; }
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .opt { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md); cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.1s; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .opt:hover { border-color: var(--c-border-strong); background: #FDFCFB; }
+  .opt.selected { border-color: var(--c-accent); background: var(--c-accent-bg); }
+  .opt:active { transform: scale(0.99); }
+  .opt-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--c-bg); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+  .opt.selected .opt-icon { background: #D6E8F7; }
+  .opt-text { font-size: 14px; color: var(--c-text); line-height: 1.5; }
+  .opt.selected .opt-text { color: var(--c-accent-text); font-weight: 500; }
+  .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; gap: 10px; }
+  .btn { height: 44px; padding: 0 22px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; font-family: var(--font); cursor: pointer; border: 1px solid var(--c-border-strong); background: var(--c-surface); color: var(--c-text-sub); transition: background 0.15s; }
+  .btn:hover { background: var(--c-bg); }
+  .btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+  .btn.primary { background: var(--c-accent); color: #fff; border-color: var(--c-accent); padding: 0 28px; }
+  .btn.primary:hover { background: #2E5A8A; }
+  .error-box { background: #FEF2F2; border: 1px solid #FECACA; border-radius: var(--radius-md); padding: 16px; margin-top: 16px; font-size: 13px; color: #B91C1C; line-height: 1.6; display: none; }
+  .error-box.active { display: block; }
+  .loading-wrap { display: none; flex-direction: column; align-items: center; justify-content: center; padding: 72px 20px; text-align: center; }
+  .loading-wrap.active { display: flex; }
+  .loading-ring { width: 32px; height: 32px; border: 2.5px solid var(--c-border); border-top-color: var(--c-accent); border-radius: 50%; animation: spin 0.75s linear infinite; margin-bottom: 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; color: var(--c-text-muted); }
+  .result-wrap { display: none; }
+  .result-wrap.active { display: block; animation: fadeIn 0.3s ease; }
+  .result-intro { margin-bottom: 20px; }
+  .result-intro .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--c-accent-text); text-transform: uppercase; margin-bottom: 6px; }
+  .result-intro h2 { font-size: 20px; font-weight: 700; color: var(--c-text); }
+  .main-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 12px; }
+  .rec-badge { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--c-accent-text); background: var(--c-accent-bg); padding: 4px 10px; border-radius: 4px; margin-bottom: 12px; text-transform: uppercase; }
+  .product-name { font-size: 20px; font-weight: 700; color: var(--c-text); margin-bottom: 10px; }
+  .product-reason { font-size: 14px; color: var(--c-text-sub); line-height: 1.75; margin-bottom: 18px; }
+  .buy-btn { display: inline-flex; align-items: center; gap: 7px; height: 42px; padding: 0 20px; background: var(--c-accent); color: #fff; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; text-decoration: none; font-family: var(--font); transition: background 0.15s; }
+  .buy-btn:hover { background: #2E5A8A; }
+  .alt-section { margin-top: 8px; }
+  .alt-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+  .alt-card { display: flex; align-items: center; justify-content: space-between; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 8px; text-decoration: none; transition: border-color 0.15s; }
+  .alt-card:hover { border-color: var(--c-border-strong); }
+  .alt-card-name { font-size: 14px; font-weight: 600; color: var(--c-text); margin-bottom: 3px; }
+  .alt-arrow { font-size: 16px; color: var(--c-text-muted); flex-shrink: 0; margin-left: 12px; }
+  .restart-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 20px; height: 42px; background: transparent; border: 1px solid var(--c-border-strong); border-radius: var(--radius-sm); font-size: 13px; color: var(--c-text-muted); cursor: pointer; font-family: var(--font); transition: background 0.15s; }
+  .restart-btn:hover { background: var(--c-surface); color: var(--c-text-sub); }
+  @media (max-width: 480px) { body { padding: 32px 16px 60px; } .quiz-header h1 { font-size: 22px; } .q-text { font-size: 17px; } }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     관리자 설정 — 시트 ID만 여기서 관리
+     ════════════════════════════════════════ -->
+<script>
+const SHEET_ID = '1-77nO97ax3J2Ca-ykU7zzTVHWqm8w35cGsCvmHM24_A';
+const BRAND    = 'SLOOM';
+const HERO_TITLE = '나에게 꼭 맞는\n마사지 기기를 찾아드릴게요';
+const HERO_DESC  = '몇 가지 질문에 답하면 내 생활 패턴에 가장 잘 맞는 제품을 추천해드려요.';
+</script>
+
+<div class="container">
+  <div class="quiz-header">
+    <div class="brand-tag" id="brand-tag"></div>
+    <h1 id="hero-title"></h1>
+    <p id="hero-desc"></p>
+  </div>
+
+  <!-- 초기 로딩 -->
+  <div class="loading-wrap active" id="init-loading">
+    <div class="loading-ring"></div>
+    <p class="loading-text">설문을 불러오는 중...</p>
+  </div>
+
+  <!-- 설문 -->
+  <div id="quiz-section" style="display:none">
+    <div class="progress-track">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <span class="progress-label" id="progress-label"></span>
+    </div>
+    <div id="steps-container"></div>
+    <div class="error-box" id="error-box"></div>
+    <div class="nav">
+      <button class="btn" id="prev-btn">← 이전</button>
+      <button class="btn primary" id="next-btn" disabled>다음 →</button>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-wrap" id="result-wrap">
+    <div class="result-intro">
+      <p class="eyebrow">추천 결과</p>
+      <h2>고객님께 딱 맞는 제품을 골랐어요</h2>
+    </div>
+    <div class="main-card" id="main-card"></div>
+    <div class="alt-section" id="alt-section"></div>
+    <button class="restart-btn" id="restart-btn">↺ 처음부터 다시 하기</button>
+  </div>
+</div>
+
+<script>
+/* ── 상태 ── */
+let step = 0;
+let answers = {};
+let CONFIG = { questions: [], products: {}, scenarios: [] };
+
+const quizSection    = document.getElementById('quiz-section');
+const resultWrap     = document.getElementById('result-wrap');
+const stepsContainer = document.getElementById('steps-container');
+const progressFill   = document.getElementById('progress-fill');
+const progressLabel  = document.getElementById('progress-label');
+const prevBtn        = document.getElementById('prev-btn');
+const nextBtn        = document.getElementById('next-btn');
+const errorBox       = document.getElementById('error-box');
+const initLoading    = document.getElementById('init-loading');
+
+/* ── 헤더 ── */
+document.getElementById('brand-tag').textContent  = BRAND + ' 맞춤 추천';
+document.getElementById('hero-title').textContent = HERO_TITLE;
+document.getElementById('hero-desc').textContent  = HERO_DESC;
+
+/* ══════════════════════════════════════════
+   구글 시트 데이터 로드
+   ══════════════════════════════════════════ */
+function sheetUrl(sheetName) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+}
+
+async function fetchSheet(sheetName) {
+  const res  = await fetch(sheetUrl(sheetName));
+  const text = await res.text();
+  const json = JSON.parse(text.replace(/^[^\[{]*/, '').replace(/[^}\]]*$/, '').replace(/^[^{]*/, ''));
+  const table = json.table;
+
+  // 첫 번째 행을 헤더로 사용 (label이 비어있으면 첫 데이터행에서 추출)
+  let cols = table.cols.map(c => (c.label || '').trim());
+
+  // cols가 모두 비어있으면 첫 번째 데이터 행을 헤더로 사용
+  if (cols.every(c => !c) && table.rows.length > 0) {
+    cols = table.rows[0].c.map(cell => (cell?.v ?? '').toString().trim());
+    table.rows = table.rows.slice(1);
+  }
+
+  const rows = table.rows
+    .filter(row => row.c && row.c.some(cell => cell?.v != null))
+    .map(row =>
+      Object.fromEntries(cols.map((col, i) => [col, row.c[i]?.v ?? '']))
+    );
+  return rows;
+}
+
+function parseQuestions(rows) {
+  return rows.map(row => {
+    const options = [];
+    for (let i = 1; i <= 5; i++) {
+      const icon  = row[`icon${i}`];
+      const label = row[`label${i}`];
+      const value = row[`value${i}`];
+      if (label) options.push({ icon: icon || '', label, value });
+    }
+    return { key: row.key, text: row.question, options };
+  });
+}
+
+function parseProducts(rows) {
+  const products = {};
+  rows.forEach(row => {
+    if (row.key) products[row.key] = { name: row.name, link: row.link, link_label: row.link_label };
+  });
+  return products;
+}
+
+function parseScenarios(rows) {
+  return rows.filter(row => row.main).map(row => {
+    const answers = {};
+    ['body','lifestyle','symptom','timing','priority','experience'].forEach(k => {
+      const v = (row[k] || '').toString().trim();
+      if (v) answers[k] = v;
+    });
+    const alts = row.alts ? String(row.alts).split(',').map(s => s.trim()).filter(Boolean) : [];
+    const main = (row.main || '').toString().trim();
+    const reason = (row.reason || '').toString().trim();
+    return { answers, main, reason, alts };
+  });
+}
+
+async function loadAll() {
+  try {
+    const [qRows, pRows, sRows] = await Promise.all([
+      fetchSheet('questions'),
+      fetchSheet('products'),
+      fetchSheet('scenarios')
+    ]);
+    CONFIG.questions = parseQuestions(qRows);
+    CONFIG.products  = parseProducts(pRows);
+    CONFIG.scenarios = parseScenarios(sRows);
+    initLoading.classList.remove('active');
+    quizSection.style.display = 'block';
+    buildSteps();
+    showStep();
+    prevBtn.addEventListener('click', goPrev);
+    nextBtn.addEventListener('click', goNext);
+    document.getElementById('restart-btn').addEventListener('click', restart);
+  } catch(e) {
+    initLoading.innerHTML = `
+      <p style="color:#B91C1C;font-size:14px;line-height:1.7">
+        시트 데이터를 불러오지 못했어요.<br>
+        구글 시트 공유 설정(링크가 있는 모든 사용자 → 뷰어)을 확인해주세요.<br><br>
+        <small style="color:#A09890">${e.message}</small>
+      </p>`;
+    console.error(e);
+  }
+}
+
+/* ══════════════════════════════════════════
+   설문 UI
+   ══════════════════════════════════════════ */
+function buildSteps() {
+  stepsContainer.innerHTML = '';
+  CONFIG.questions.forEach((q, qi) => {
+    const div = document.createElement('div');
+    div.className = 'step';
+    div.dataset.step = qi;
+    let html = `<p class="q-eyebrow">질문 ${qi+1} / ${CONFIG.questions.length}</p>`;
+    html += `<p class="q-text">${esc(q.text)}</p><div class="options">`;
+    q.options.forEach((opt, oi) => {
+      html += `<div class="opt" data-qi="${qi}" data-oi="${oi}">
+        <div class="opt-icon">${opt.icon}</div>
+        <div class="opt-text">${esc(opt.label)}</div>
+      </div>`;
+    });
+    html += `</div>`;
+    div.innerHTML = html;
+    stepsContainer.appendChild(div);
+    div.querySelectorAll('.opt').forEach(el => {
+      el.addEventListener('click', () => selectOpt(qi, +el.dataset.oi, el));
+    });
+  });
+}
+
+function selectOpt(qi, oi, el) {
+  stepsContainer.querySelectorAll(`.opt[data-qi="${qi}"]`).forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  answers[CONFIG.questions[qi].key] = CONFIG.questions[qi].options[oi].value;
+  nextBtn.disabled = false;
+  errorBox.classList.remove('active');
+}
+
+function showStep() {
+  stepsContainer.querySelectorAll('.step').forEach((s, i) => s.classList.toggle('active', i === step));
+  const total = CONFIG.questions.length;
+  progressFill.style.width = ((step+1) / total * 100) + '%';
+  progressLabel.textContent = (step+1) + ' / ' + total;
+  prevBtn.disabled = step === 0;
+  nextBtn.textContent = step === total-1 ? '추천 받기 →' : '다음 →';
+  const key = CONFIG.questions[step].key;
+  nextBtn.disabled = answers[key] === undefined;
+  errorBox.classList.remove('active');
+  if (answers[key] !== undefined) {
+    CONFIG.questions[step].options.forEach((opt, oi) => {
+      if (opt.value === answers[key]) {
+        const el = stepsContainer.querySelector(`.opt[data-qi="${step}"][data-oi="${oi}"]`);
+        if (el) el.classList.add('selected');
+      }
+    });
+  }
+}
+
+function goPrev() { if (step > 0) { step--; showStep(); } }
+
+function goNext() {
+  const key = CONFIG.questions[step].key;
+  if (answers[key] === undefined) {
+    errorBox.textContent = '항목을 선택해주세요.';
+    errorBox.classList.add('active');
+    return;
+  }
+  if (step < CONFIG.questions.length-1) { step++; showStep(); }
+  else renderResult(matchScenario());
+}
+
+/* ══════════════════════════════════════════
+   시나리오 매칭
+   ══════════════════════════════════════════ */
+function matchScenario() {
+  // 조건 있는 시나리오 먼저 매칭
+  for (const s of CONFIG.scenarios) {
+    const keys = Object.keys(s.answers);
+    if (keys.length === 0) continue;
+    if (keys.every(k => answers[k] === s.answers[k])) return s;
+  }
+  // 폴백: answers가 비어있는 시나리오
+  const fallback = CONFIG.scenarios.find(s => Object.keys(s.answers).length === 0);
+  if (fallback) return fallback;
+  // 그래도 없으면 마지막
+  return CONFIG.scenarios[CONFIG.scenarios.length - 1];
+}
+
+/* ══════════════════════════════════════════
+   결과 렌더
+   ══════════════════════════════════════════ */
+function renderResult(scenario) {
+  quizSection.style.display = 'none';
+  const p = CONFIG.products[scenario.main];
+  if (!p) {
+    document.getElementById('main-card').innerHTML = '<p style="color:#B91C1C;font-size:14px">추천 제품을 찾을 수 없어요. 시트 설정을 확인해주세요.</p>';
+    resultWrap.classList.add('active');
+    return;
+  }
+  document.getElementById('main-card').innerHTML = `
+    <div class="rec-badge">🎯 맞춤 추천</div>
+    <div class="product-name">${esc(p.name)}</div>
+    <div class="product-reason">${esc(scenario.reason)}</div>
+    <a class="buy-btn" href="${p.link}" target="_blank" rel="noopener">${esc(p.link_label)} ↗</a>
+  `;
+  const altSection = document.getElementById('alt-section');
+  if (scenario.alts && scenario.alts.length) {
+    let html = '<p class="alt-label">함께 고려해볼 제품</p>';
+    scenario.alts.slice(0,2).forEach(key => {
+      const ap = CONFIG.products[key];
+      if (!ap) return;
+      html += `<a class="alt-card" href="${ap.link}" target="_blank" rel="noopener">
+        <div><div class="alt-card-name">${esc(ap.name)}</div></div>
+        <span class="alt-arrow">→</span>
+      </a>`;
+    });
+    altSection.innerHTML = html;
+  }
+  resultWrap.classList.add('active');
+}
+
+function restart() {
+  step = 0; answers = {};
+  stepsContainer.querySelectorAll('.opt').forEach(o => o.classList.remove('selected'));
+  resultWrap.classList.remove('active');
+  quizSection.style.display = 'block';
+  showStep();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── 시작 ── */
+loadAll();
+</script>
+</body>
+</html>
