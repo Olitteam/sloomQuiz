@@ -11,7 +11,7 @@
          1. 기본 색상 및 공통 설정
          ========================================================= */
       :root {
-        --bg: #fbfbfb;
+        --bg: #f7f5f2;
         --card: #ffffff;
         --line: #e7e2dc;
 
@@ -19,7 +19,7 @@
         --sub: #6c655f;
         --muted: #9b938b;
 
-        --accent: #002353;
+        --accent: #315d8a;
         --accent-bg: #edf3f9;
       }
 
@@ -474,6 +474,132 @@
          ========================================================= */
       const SHEET_ID = "1-77nO97ax3J2Ca-ykU7zzTVHWqm8w35cGsCvmHM24_A";
 
+      /* =========================================================
+         GA4 / GTM 추적 설정
+
+         - 사이트에 GA4 또는 GTM이 이미 설치되어 있으면 그대로 사용됩니다.
+         - 별도 설치가 필요하면 아래 GA_MEASUREMENT_ID에 G-로 시작하는
+           측정 ID를 입력하세요. 비워두면 기존 dataLayer만 사용합니다.
+         ========================================================= */
+      const TRACKING = {
+        // 선택 사항: GA4 측정 ID. 사용하지 않으면 빈 값으로 두세요.
+        GA_MEASUREMENT_ID: "",
+
+        // 필수: Apps Script를 웹앱으로 배포한 뒤 생성되는 /exec URL을 입력하세요.
+        // 예: https://script.google.com/macros/s/XXXXXXXXXXXX/exec
+        SHEET_LOG_ENDPOINT: "https://script.google.com/macros/s/AKfycbyVLmYdM_RYEHyRm8Ht5ALdn7iIkzQ5cjI1rN0aBUzuGsyk4imYXyh903Tu7Xsqa4WZ/exec",
+
+        DEBUG: false,
+      };
+
+      window.dataLayer = window.dataLayer || [];
+
+      function gtag() {
+        window.dataLayer.push(arguments);
+      }
+
+      if (TRACKING.GA_MEASUREMENT_ID) {
+        const gaScript = document.createElement("script");
+        gaScript.async = true;
+        gaScript.src =
+          `https://www.googletagmanager.com/gtag/js?id=${TRACKING.GA_MEASUREMENT_ID}`;
+        document.head.appendChild(gaScript);
+
+        gtag("js", new Date());
+        gtag("config", TRACKING.GA_MEASUREMENT_ID);
+      }
+
+      const recommendationSessionId = (() => {
+        const storageKey = "sloom_recommend_session_id";
+        let sessionId = sessionStorage.getItem(storageKey);
+
+        if (!sessionId) {
+          sessionId =
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `rec_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+          sessionStorage.setItem(storageKey, sessionId);
+        }
+
+        return sessionId;
+      })();
+
+      let recommendationStarted = false;
+      let currentRecommendedProduct = "";
+      let currentRecommendationRating = 0;
+
+      function sendEventToGoogleSheet(eventName, payload) {
+        if (!TRACKING.SHEET_LOG_ENDPOINT) {
+          if (TRACKING.DEBUG) {
+            console.warn(
+              "[SLOOM Tracking] SHEET_LOG_ENDPOINT가 비어 있어 시트 기록을 건너뜁니다.",
+            );
+          }
+          return;
+        }
+
+        const logData = {
+          event_name: eventName,
+          session_id: recommendationSessionId,
+          user_id: "",
+          event_time: new Date().toISOString(),
+          page_url: window.location.href,
+          source: new URLSearchParams(window.location.search).get("utm_source") || "",
+          medium: new URLSearchParams(window.location.search).get("utm_medium") || "",
+          campaign: new URLSearchParams(window.location.search).get("utm_campaign") || "",
+          body: answers.body || "",
+          lifestyle: answers.lifestyle || "",
+          when: answers.when || "",
+          priority: answers.priority || "",
+          ...payload,
+        };
+
+        // Apps Script 웹앱은 응답을 읽지 않는 no-cors 방식으로 전송합니다.
+        // 페이지 이동 직전 클릭도 누락되지 않도록 sendBeacon을 우선 사용합니다.
+        const body = JSON.stringify(logData);
+
+        if (navigator.sendBeacon) {
+          const blob = new Blob([body], { type: "text/plain;charset=UTF-8" });
+          const sent = navigator.sendBeacon(TRACKING.SHEET_LOG_ENDPOINT, blob);
+          if (sent) return;
+        }
+
+        fetch(TRACKING.SHEET_LOG_ENDPOINT, {
+          method: "POST",
+          mode: "no-cors",
+          keepalive: true,
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body,
+        }).catch((error) => {
+          if (TRACKING.DEBUG) {
+            console.error("[SLOOM Tracking] 시트 기록 실패", error);
+          }
+        });
+      }
+
+      function trackEvent(eventName, parameters = {}) {
+        const payload = {
+          recommendation_session_id: recommendationSessionId,
+          ...parameters,
+        };
+
+        // 구글 스프레드시트 Event_Log에 실제 사용자 행동을 기록합니다.
+        sendEventToGoogleSheet(eventName, parameters);
+
+        // GA4가 설치되어 있다면 이벤트로도 전송됩니다.
+        gtag("event", eventName, payload);
+
+        // GTM에서는 event 키를 기준으로 맞춤 이벤트 트리거를 만들 수 있습니다.
+        window.dataLayer.push({
+          event: eventName,
+          ...payload,
+        });
+
+        if (TRACKING.DEBUG) {
+          console.log(`[SLOOM Tracking] ${eventName}`, payload);
+        }
+      }
+
       const CONFIG = {
         questions: [],
         products: {},
@@ -656,6 +782,18 @@
           $("#load").classList.remove("on");
           $("#quiz").style.display = "block";
 
+          // 페이지가 정상적으로 로드될 때마다 조회수 1회를 기록합니다.
+          trackEvent("page_view", {
+            page_location: window.location.href,
+            page_title: document.title,
+          });
+
+          // 추천 서비스 진입 이벤트도 별도로 기록합니다.
+          trackEvent("recommend_view", {
+            page_location: window.location.href,
+            page_title: document.title,
+          });
+
           renderQuestion();
         } catch (error) {
           $("#load").innerHTML = `
@@ -720,6 +858,20 @@
         document.querySelectorAll(".opt").forEach((element) => {
           element.addEventListener("click", () => {
             answers[question.key] = element.dataset.value;
+
+            if (!recommendationStarted) {
+              recommendationStarted = true;
+              trackEvent("recommend_start", {
+                first_question: question.key,
+              });
+            }
+
+            trackEvent("recommend_answer", {
+              question_key: question.key,
+              answer_value: element.dataset.value,
+              question_step: currentStep + 1,
+            });
+
             renderQuestion();
           });
         });
@@ -891,6 +1043,20 @@
         const starFillWidth =
           (recommendationRating / 5) * 100;
 
+        currentRecommendedProduct = productKey;
+        currentRecommendationRating = Number(recommendationRatingText);
+
+        trackEvent("recommend_result", {
+          recommended_product: productKey,
+          recommended_product_name: product.name,
+          recommendation_score: fitScore,
+          recommendation_rating: currentRecommendationRating,
+          body: answers.body || "",
+          lifestyle: answers.lifestyle || "",
+          when: answers.when || "",
+          priority: answers.priority || "",
+        });
+
         $("#quiz").style.display = "none";
         $("#result").classList.add("on");
 
@@ -1004,6 +1170,7 @@
               href="${escapeHtml(product.link)}"
               target="_blank"
               rel="noopener"
+              onclick="trackProductClick('${escapeHtml(productKey)}', 1, 'main')"
             >
               ${escapeHtml(
                 product.link_label || "제품 보러가기",
@@ -1021,9 +1188,10 @@
             </h3>
 
             ${alternatives
-              .map((alternativeKey) =>
+              .map((alternativeKey, index) =>
                 renderAlternativeProduct(
                   alternativeKey,
+                  index + 2,
                 ),
               )
               .join("")}
@@ -1039,7 +1207,7 @@
         `;
       }
 
-      function renderAlternativeProduct(productKey) {
+      function renderAlternativeProduct(productKey, rank) {
         const product = CONFIG.products[productKey];
 
         if (!product) {
@@ -1054,6 +1222,7 @@
             href="${escapeHtml(product.link)}"
             target="_blank"
             rel="noopener"
+            onclick="trackProductClick('${escapeHtml(productKey)}', ${rank}, 'alternative')"
           >
             <strong>
               ${escapeHtml(product.name)}
@@ -1069,6 +1238,28 @@
             </small>
           </a>
         `;
+      }
+
+      function trackProductClick(productKey, rank, clickType) {
+        const product = CONFIG.products[productKey] || {};
+
+        trackEvent(
+          clickType === "main"
+            ? "recommend_product_click"
+            : "recommend_alt_click",
+          {
+            recommended_product: currentRecommendedProduct,
+            clicked_product: productKey,
+            clicked_product_name: product.name || "",
+            click_rank: rank,
+            click_type: clickType,
+            recommendation_rating: currentRecommendationRating,
+            body: answers.body || "",
+            lifestyle: answers.lifestyle || "",
+            when: answers.when || "",
+            priority: answers.priority || "",
+          },
+        );
       }
 
       function showNoResult() {
@@ -1101,8 +1292,16 @@
          8. 설문 초기화
          ========================================================= */
       function restartQuiz() {
+        trackEvent("recommend_restart", {
+          recommended_product: currentRecommendedProduct,
+          recommendation_rating: currentRecommendationRating,
+        });
+
         currentStep = 0;
         answers = {};
+        recommendationStarted = false;
+        currentRecommendedProduct = "";
+        currentRecommendationRating = 0;
 
         $("#result").classList.remove("on");
         $("#result").innerHTML = "";
