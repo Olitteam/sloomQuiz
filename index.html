@@ -1,373 +1,1120 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SLOOM 맞춤 추천</title>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --c-bg: #F7F5F2; --c-surface: #FFFFFF; --c-border: #E8E4DF; --c-border-strong: #D0CBC4;
-    --c-text: #1A1714; --c-text-sub: #6B6460; --c-text-muted: #A09890;
-    --c-accent: #3B6EA5; --c-accent-bg: #EBF2FA; --c-accent-text: #1E4D7A;
-    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
-    --font: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-  }
-  body { font-family: var(--font); background: var(--c-bg); color: var(--c-text); min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 48px 20px 80px; }
-  .container { width: 100%; max-width: 560px; }
-  .quiz-header { margin-bottom: 36px; }
-  .brand-tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--c-accent-text); background: var(--c-accent-bg); padding: 5px 10px; border-radius: 4px; margin-bottom: 14px; text-transform: uppercase; }
-  .quiz-header h1 { font-size: 26px; font-weight: 700; line-height: 1.35; color: var(--c-text); margin-bottom: 8px; white-space: pre-line; }
-  .quiz-header p { font-size: 14px; color: var(--c-text-sub); line-height: 1.6; }
-  .progress-track { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
-  .progress-bar { flex: 1; height: 3px; background: var(--c-border); border-radius: 2px; overflow: hidden; }
-  .progress-fill { height: 100%; background: var(--c-accent); border-radius: 2px; transition: width 0.35s cubic-bezier(0.4,0,0.2,1); }
-  .progress-label { font-size: 12px; color: var(--c-text-muted); white-space: nowrap; }
-  .step { display: none; }
-  .step.active { display: block; animation: fadeIn 0.2s ease; }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-  .q-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--c-text-muted); text-transform: uppercase; margin-bottom: 8px; }
-  .q-text { font-size: 19px; font-weight: 600; color: var(--c-text); line-height: 1.45; margin-bottom: 20px; }
-  .options { display: flex; flex-direction: column; gap: 8px; }
-  .opt { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md); cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.1s; user-select: none; -webkit-tap-highlight-color: transparent; }
-  .opt:hover { border-color: var(--c-border-strong); background: #FDFCFB; }
-  .opt.selected { border-color: var(--c-accent); background: var(--c-accent-bg); }
-  .opt:active { transform: scale(0.99); }
-  .opt-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--c-bg); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
-  .opt.selected .opt-icon { background: #D6E8F7; }
-  .opt-text { font-size: 14px; color: var(--c-text); line-height: 1.5; }
-  .opt.selected .opt-text { color: var(--c-accent-text); font-weight: 500; }
-  .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; gap: 10px; }
-  .btn { height: 44px; padding: 0 22px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; font-family: var(--font); cursor: pointer; border: 1px solid var(--c-border-strong); background: var(--c-surface); color: var(--c-text-sub); transition: background 0.15s; }
-  .btn:hover { background: var(--c-bg); }
-  .btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
-  .btn.primary { background: var(--c-accent); color: #fff; border-color: var(--c-accent); padding: 0 28px; }
-  .btn.primary:hover { background: #2E5A8A; }
-  .error-box { background: #FEF2F2; border: 1px solid #FECACA; border-radius: var(--radius-md); padding: 16px; margin-top: 16px; font-size: 13px; color: #B91C1C; line-height: 1.6; display: none; }
-  .error-box.active { display: block; }
-  .loading-wrap { display: none; flex-direction: column; align-items: center; justify-content: center; padding: 72px 20px; text-align: center; }
-  .loading-wrap.active { display: flex; }
-  .loading-ring { width: 32px; height: 32px; border: 2.5px solid var(--c-border); border-top-color: var(--c-accent); border-radius: 50%; animation: spin 0.75s linear infinite; margin-bottom: 14px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-size: 14px; color: var(--c-text-muted); }
-  .result-wrap { display: none; }
-  .result-wrap.active { display: block; animation: fadeIn 0.3s ease; }
-  .result-intro { margin-bottom: 20px; }
-  .result-intro .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--c-accent-text); text-transform: uppercase; margin-bottom: 6px; }
-  .result-intro h2 { font-size: 20px; font-weight: 700; color: var(--c-text); }
-  .main-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 12px; }
-  .rec-badge { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--c-accent-text); background: var(--c-accent-bg); padding: 4px 10px; border-radius: 4px; margin-bottom: 12px; text-transform: uppercase; }
-  .product-name { font-size: 20px; font-weight: 700; color: var(--c-text); margin-bottom: 10px; }
-  .product-reason { font-size: 14px; color: var(--c-text-sub); line-height: 1.75; margin-bottom: 18px; }
-  .buy-btn { display: inline-flex; align-items: center; gap: 7px; height: 42px; padding: 0 20px; background: var(--c-accent); color: #fff; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; text-decoration: none; font-family: var(--font); transition: background 0.15s; }
-  .buy-btn:hover { background: #2E5A8A; }
-  .alt-section { margin-top: 8px; }
-  .alt-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
-  .alt-card { display: flex; align-items: center; justify-content: space-between; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 8px; text-decoration: none; transition: border-color 0.15s; }
-  .alt-card:hover { border-color: var(--c-border-strong); }
-  .alt-card-name { font-size: 14px; font-weight: 600; color: var(--c-text); margin-bottom: 3px; }
-  .alt-arrow { font-size: 16px; color: var(--c-text-muted); flex-shrink: 0; margin-left: 12px; }
-  .restart-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 20px; height: 42px; background: transparent; border: 1px solid var(--c-border-strong); border-radius: var(--radius-sm); font-size: 13px; color: var(--c-text-muted); cursor: pointer; font-family: var(--font); transition: background 0.15s; }
-  .restart-btn:hover { background: var(--c-surface); color: var(--c-text-sub); }
-  @media (max-width: 480px) { body { padding: 32px 16px 60px; } .quiz-header h1 { font-size: 22px; } .q-text { font-size: 17px; } }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<!-- ════════════════════════════════════════
-     관리자 설정 — 시트 ID만 여기서 관리
-     ════════════════════════════════════════ -->
-<script>
-const SHEET_ID = '1-77nO97ax3J2Ca-ykU7zzTVHWqm8w35cGsCvmHM24_A';
-const BRAND    = 'SLOOM';
-const HERO_TITLE = '나에게 꼭 맞는\n마사지 기기를 찾아드릴게요';
-const HERO_DESC  = '몇 가지 질문에 답하면 내 생활 패턴에 가장 잘 맞는 제품을 추천해드려요.';
-</script>
+    <title>SLOOM AI 맞춤 추천</title>
 
-<div class="container">
-  <div class="quiz-header">
-    <div class="brand-tag" id="brand-tag"></div>
-    <h1 id="hero-title"></h1>
-    <p id="hero-desc"></p>
-  </div>
+    <style>
+      /* =========================================================
+         1. 기본 색상 및 공통 설정
+         ========================================================= */
+      :root {
+        --bg: #fbfbfb;
+        --card: #ffffff;
+        --line: #e7e2dc;
 
-  <!-- 초기 로딩 -->
-  <div class="loading-wrap active" id="init-loading">
-    <div class="loading-ring"></div>
-    <p class="loading-text">설문을 불러오는 중...</p>
-  </div>
+        --text: #191714;
+        --sub: #6c655f;
+        --muted: #9b938b;
 
-  <!-- 설문 -->
-  <div id="quiz-section" style="display:none">
-    <div class="progress-track">
-      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-      <span class="progress-label" id="progress-label"></span>
-    </div>
-    <div id="steps-container"></div>
-    <div class="error-box" id="error-box"></div>
-    <div class="nav">
-      <button class="btn" id="prev-btn">← 이전</button>
-      <button class="btn primary" id="next-btn" disabled>다음 →</button>
-    </div>
-  </div>
-
-  <!-- 결과 -->
-  <div class="result-wrap" id="result-wrap">
-    <div class="result-intro">
-      <p class="eyebrow">추천 결과</p>
-      <h2>고객님께 딱 맞는 제품을 골랐어요</h2>
-    </div>
-    <div class="main-card" id="main-card"></div>
-    <div class="alt-section" id="alt-section"></div>
-    <button class="restart-btn" id="restart-btn">↺ 처음부터 다시 하기</button>
-  </div>
-</div>
-
-<script>
-/* ── 상태 ── */
-let step = 0;
-let answers = {};
-let CONFIG = { questions: [], products: {}, scenarios: [] };
-
-const quizSection    = document.getElementById('quiz-section');
-const resultWrap     = document.getElementById('result-wrap');
-const stepsContainer = document.getElementById('steps-container');
-const progressFill   = document.getElementById('progress-fill');
-const progressLabel  = document.getElementById('progress-label');
-const prevBtn        = document.getElementById('prev-btn');
-const nextBtn        = document.getElementById('next-btn');
-const errorBox       = document.getElementById('error-box');
-const initLoading    = document.getElementById('init-loading');
-
-/* ── 헤더 ── */
-document.getElementById('brand-tag').textContent  = BRAND + ' 맞춤 추천';
-document.getElementById('hero-title').textContent = HERO_TITLE;
-document.getElementById('hero-desc').textContent  = HERO_DESC;
-
-/* ══════════════════════════════════════════
-   구글 시트 데이터 로드
-   ══════════════════════════════════════════ */
-function sheetUrl(sheetName) {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
-}
-
-async function fetchSheet(sheetName) {
-  const res  = await fetch(sheetUrl(sheetName));
-  const text = await res.text();
-  const json = JSON.parse(text.replace(/^[^\[{]*/, '').replace(/[^}\]]*$/, '').replace(/^[^{]*/, ''));
-  const table = json.table;
-
-  // 첫 번째 행을 헤더로 사용 (label이 비어있으면 첫 데이터행에서 추출)
-  let cols = table.cols.map(c => (c.label || '').trim());
-
-  // cols가 모두 비어있으면 첫 번째 데이터 행을 헤더로 사용
-  if (cols.every(c => !c) && table.rows.length > 0) {
-    cols = table.rows[0].c.map(cell => (cell?.v ?? '').toString().trim());
-    table.rows = table.rows.slice(1);
-  }
-
-  const rows = table.rows
-    .filter(row => row.c && row.c.some(cell => cell?.v != null))
-    .map(row =>
-      Object.fromEntries(cols.map((col, i) => [col, row.c[i]?.v ?? '']))
-    );
-  return rows;
-}
-
-function parseQuestions(rows) {
-  return rows.map(row => {
-    const options = [];
-    for (let i = 1; i <= 5; i++) {
-      const icon  = row[`icon${i}`];
-      const label = row[`label${i}`];
-      const value = row[`value${i}`];
-      if (label) options.push({ icon: icon || '', label, value });
-    }
-    return { key: row.key, text: row.question, options };
-  });
-}
-
-function parseProducts(rows) {
-  const products = {};
-  rows.forEach(row => {
-    if (row.key) products[row.key] = { name: row.name, link: row.link, link_label: row.link_label };
-  });
-  return products;
-}
-
-function parseScenarios(rows) {
-  return rows.filter(row => row.main).map(row => {
-    const answers = {};
-    ['body','lifestyle','symptom','timing','priority','experience'].forEach(k => {
-      const v = (row[k] || '').toString().trim();
-      if (v) answers[k] = v;
-    });
-    const alts = row.alts ? String(row.alts).split(',').map(s => s.trim()).filter(Boolean) : [];
-    const main = (row.main || '').toString().trim();
-    const reason = (row.reason || '').toString().trim();
-    return { answers, main, reason, alts };
-  });
-}
-
-async function loadAll() {
-  try {
-    const [qRows, pRows, sRows] = await Promise.all([
-      fetchSheet('questions'),
-      fetchSheet('products'),
-      fetchSheet('scenarios')
-    ]);
-    CONFIG.questions = parseQuestions(qRows);
-    CONFIG.products  = parseProducts(pRows);
-    CONFIG.scenarios = parseScenarios(sRows);
-    initLoading.classList.remove('active');
-    quizSection.style.display = 'block';
-    buildSteps();
-    showStep();
-    prevBtn.addEventListener('click', goPrev);
-    nextBtn.addEventListener('click', goNext);
-    document.getElementById('restart-btn').addEventListener('click', restart);
-  } catch(e) {
-    initLoading.innerHTML = `
-      <p style="color:#B91C1C;font-size:14px;line-height:1.7">
-        시트 데이터를 불러오지 못했어요.<br>
-        구글 시트 공유 설정(링크가 있는 모든 사용자 → 뷰어)을 확인해주세요.<br><br>
-        <small style="color:#A09890">${e.message}</small>
-      </p>`;
-    console.error(e);
-  }
-}
-
-/* ══════════════════════════════════════════
-   설문 UI
-   ══════════════════════════════════════════ */
-function buildSteps() {
-  stepsContainer.innerHTML = '';
-  CONFIG.questions.forEach((q, qi) => {
-    const div = document.createElement('div');
-    div.className = 'step';
-    div.dataset.step = qi;
-    let html = `<p class="q-eyebrow">질문 ${qi+1} / ${CONFIG.questions.length}</p>`;
-    html += `<p class="q-text">${esc(q.text)}</p><div class="options">`;
-    q.options.forEach((opt, oi) => {
-      html += `<div class="opt" data-qi="${qi}" data-oi="${oi}">
-        <div class="opt-icon">${opt.icon}</div>
-        <div class="opt-text">${esc(opt.label)}</div>
-      </div>`;
-    });
-    html += `</div>`;
-    div.innerHTML = html;
-    stepsContainer.appendChild(div);
-    div.querySelectorAll('.opt').forEach(el => {
-      el.addEventListener('click', () => selectOpt(qi, +el.dataset.oi, el));
-    });
-  });
-}
-
-function selectOpt(qi, oi, el) {
-  stepsContainer.querySelectorAll(`.opt[data-qi="${qi}"]`).forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-  answers[CONFIG.questions[qi].key] = CONFIG.questions[qi].options[oi].value;
-  nextBtn.disabled = false;
-  errorBox.classList.remove('active');
-}
-
-function showStep() {
-  stepsContainer.querySelectorAll('.step').forEach((s, i) => s.classList.toggle('active', i === step));
-  const total = CONFIG.questions.length;
-  progressFill.style.width = ((step+1) / total * 100) + '%';
-  progressLabel.textContent = (step+1) + ' / ' + total;
-  prevBtn.disabled = step === 0;
-  nextBtn.textContent = step === total-1 ? '추천 받기 →' : '다음 →';
-  const key = CONFIG.questions[step].key;
-  nextBtn.disabled = answers[key] === undefined;
-  errorBox.classList.remove('active');
-  if (answers[key] !== undefined) {
-    CONFIG.questions[step].options.forEach((opt, oi) => {
-      if (opt.value === answers[key]) {
-        const el = stepsContainer.querySelector(`.opt[data-qi="${step}"][data-oi="${oi}"]`);
-        if (el) el.classList.add('selected');
+        --accent: #002353;
+        --accent-bg: #edf3f9;
       }
-    });
-  }
-}
 
-function goPrev() { if (step > 0) { step--; showStep(); } }
+      * {
+        box-sizing: border-box;
+      }
 
-function goNext() {
-  const key = CONFIG.questions[step].key;
-  if (answers[key] === undefined) {
-    errorBox.textContent = '항목을 선택해주세요.';
-    errorBox.classList.add('active');
-    return;
-  }
-  if (step < CONFIG.questions.length-1) { step++; showStep(); }
-  else renderResult(matchScenario());
-}
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Pretendard,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Apple SD Gothic Neo",
+          sans-serif;
+      }
 
-/* ══════════════════════════════════════════
-   시나리오 매칭
-   ══════════════════════════════════════════ */
-function matchScenario() {
-  // 조건 있는 시나리오 먼저 매칭
-  for (const s of CONFIG.scenarios) {
-    const keys = Object.keys(s.answers);
-    if (keys.length === 0) continue;
-    if (keys.every(k => answers[k] === s.answers[k])) return s;
-  }
-  // 폴백: answers가 비어있는 시나리오
-  const fallback = CONFIG.scenarios.find(s => Object.keys(s.answers).length === 0);
-  if (fallback) return fallback;
-  // 그래도 없으면 마지막
-  return CONFIG.scenarios[CONFIG.scenarios.length - 1];
-}
+      button,
+      a {
+        font-family: inherit;
+      }
 
-/* ══════════════════════════════════════════
-   결과 렌더
-   ══════════════════════════════════════════ */
-function renderResult(scenario) {
-  quizSection.style.display = 'none';
-  const p = CONFIG.products[scenario.main];
-  if (!p) {
-    document.getElementById('main-card').innerHTML = '<p style="color:#B91C1C;font-size:14px">추천 제품을 찾을 수 없어요. 시트 설정을 확인해주세요.</p>';
-    resultWrap.classList.add('active');
-    return;
-  }
-  document.getElementById('main-card').innerHTML = `
-    <div class="rec-badge">🎯 맞춤 추천</div>
-    <div class="product-name">${esc(p.name)}</div>
-    <div class="product-reason">${esc(scenario.reason)}</div>
-    <a class="buy-btn" href="${p.link}" target="_blank" rel="noopener">${esc(p.link_label)} ↗</a>
-  `;
-  const altSection = document.getElementById('alt-section');
-  if (scenario.alts && scenario.alts.length) {
-    let html = '<p class="alt-label">함께 고려해볼 제품</p>';
-    scenario.alts.slice(0,2).forEach(key => {
-      const ap = CONFIG.products[key];
-      if (!ap) return;
-      html += `<a class="alt-card" href="${ap.link}" target="_blank" rel="noopener">
-        <div><div class="alt-card-name">${esc(ap.name)}</div></div>
-        <span class="alt-arrow">→</span>
-      </a>`;
-    });
-    altSection.innerHTML = html;
-  }
-  resultWrap.classList.add('active');
-}
+      /* =========================================================
+         2. 전체 레이아웃 및 상단 소개
+         ========================================================= */
+      .wrap {
+        width: 100%;
+        max-width: 620px;
+        margin: 0 auto;
+        padding: 42px 18px 70px;
+      }
 
-function restart() {
-  step = 0; answers = {};
-  stepsContainer.querySelectorAll('.opt').forEach(o => o.classList.remove('selected'));
-  resultWrap.classList.remove('active');
-  quizSection.style.display = 'block';
-  showStep();
-}
+      .tag {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: var(--accent-bg);
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
 
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+      .hero h1 {
+        margin: 14px 0 8px;
+        font-size: 28px;
+        line-height: 1.35;
+      }
 
-/* ── 시작 ── */
-loadAll();
-</script>
-</body>
+      .hero p {
+        margin: 0;
+        color: var(--sub);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      /* =========================================================
+         3. 설문 진행률
+         ========================================================= */
+      .progress {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 30px 0 22px;
+      }
+
+      .track {
+        flex: 1;
+        height: 4px;
+        overflow: hidden;
+        border-radius: 5px;
+        background: var(--line);
+      }
+
+      .fill {
+        height: 100%;
+        background: var(--accent);
+        transition: width 0.3s ease;
+      }
+
+      .count {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      /* =========================================================
+         4. 질문 및 선택지
+         ========================================================= */
+      .qey {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+      }
+
+      .qtext {
+        margin: 8px 0 18px;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.5;
+      }
+
+      .opts {
+        display: grid;
+        gap: 9px;
+      }
+
+      .opt {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 15px 16px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: var(--card);
+        cursor: pointer;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease,
+          transform 0.1s ease;
+      }
+
+      .opt:hover {
+        border-color: #cfc7bf;
+      }
+
+      .opt:active {
+        transform: scale(0.99);
+      }
+
+      .opt.sel {
+        border-color: var(--accent);
+        background: var(--accent-bg);
+      }
+
+      .ico {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+        border-radius: 9px;
+        background: #f4f1ed;
+      }
+
+      /* =========================================================
+         5. 설문 이동 버튼
+         ========================================================= */
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 22px;
+      }
+
+      .btn {
+        height: 44px;
+        padding: 0 22px;
+        border: 1px solid #d4cec7;
+        border-radius: 9px;
+        background: #ffffff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .btn.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #ffffff;
+      }
+
+      .btn:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+
+      /* =========================================================
+         6. 로딩 화면
+         ========================================================= */
+      .loading,
+      .result {
+        display: none;
+      }
+
+      .loading.on {
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        padding: 80px 10px;
+      }
+
+      .spin {
+        width: 36px;
+        height: 36px;
+        border: 3px solid var(--line);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* =========================================================
+         7. 추천 결과
+         ========================================================= */
+      .result.on {
+        display: block;
+      }
+
+      .rating {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 20px 0 10px;
+      }
+
+      .rating-stars {
+        position: relative;
+        display: inline-block;
+        font-size: 27px;
+        line-height: 1;
+        letter-spacing: 3px;
+      }
+
+      .rating-stars-base {
+        color: #d8d2cb;
+      }
+
+      .rating-stars-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        overflow: hidden;
+        color: #f2b84b;
+        white-space: nowrap;
+      }
+
+      .rating-info {
+        display: flex;
+        align-items: baseline;
+        gap: 5px;
+      }
+
+      .rating-info strong {
+        color: var(--text);
+        font-size: 22px;
+      }
+
+      .rating-info span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .analysis {
+        margin: 18px 0;
+        padding: 18px;
+        border-radius: 14px;
+        background: var(--accent-bg);
+      }
+
+      .analysis h3 {
+        margin: 0 0 8px;
+        color: var(--accent);
+        font-size: 14px;
+      }
+
+      .analysis p {
+        margin: 4px 0;
+        color: #38516a;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .card {
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: #ffffff;
+      }
+
+      .card img {
+        width: 100%;
+        margin: 4px 0 18px;
+        border-radius: 12px;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 5px 9px;
+        border-radius: 5px;
+        background: var(--accent-bg);
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .name {
+        margin: 12px 0 8px;
+        font-size: 23px;
+        font-weight: 800;
+      }
+
+      .summary {
+        color: var(--sub);
+        font-size: 14px;
+        line-height: 1.8;
+      }
+
+      .sect {
+        margin-top: 24px;
+      }
+
+      .sect h3 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+
+      .why {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--sub);
+        font-size: 14px;
+        line-height: 1.75;
+      }
+
+      .tip {
+        padding: 15px;
+        border-radius: 12px;
+        background: #f8f6f3;
+        color: var(--sub);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .buy {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 48px;
+        margin-top: 22px;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #ffffff;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      /* =========================================================
+         8. 대체 추천 및 다시 시작
+         ========================================================= */
+      .alts {
+        margin-top: 18px;
+      }
+
+      .alt {
+        display: block;
+        margin-top: 8px;
+        padding: 15px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: #ffffff;
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      .restart {
+        width: 100%;
+        height: 44px;
+        margin-top: 22px;
+        border: 1px solid #d4cec7;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--sub);
+        cursor: pointer;
+      }
+
+      /* =========================================================
+         9. 모바일 대응
+         ========================================================= */
+      @media (max-width: 480px) {
+        .wrap {
+          padding-top: 28px;
+        }
+
+        .hero h1 {
+          font-size: 24px;
+        }
+
+        .qtext {
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="wrap">
+      <!-- 상단 소개 -->
+      <header class="hero">
+        <span class="tag">SLOOM AI CARE FINDER</span>
+
+        <h1>
+          나에게 꼭 맞는<br />
+          마사지 기기를 찾아드릴게요
+        </h1>
+
+        <p>
+          몇 가지 답변을 바탕으로 생활 패턴과 사용 목적을 분석해
+          가장 적합한 제품을 추천해드려요.
+        </p>
+      </header>
+
+      <!-- 초기 데이터 로딩 -->
+      <section id="load" class="loading on">
+        <div class="spin"></div>
+        <p>추천 데이터를 불러오는 중...</p>
+      </section>
+
+      <!-- 설문 영역 -->
+      <section id="quiz" style="display: none">
+        <div class="progress">
+          <div class="track">
+            <div id="fill" class="fill"></div>
+          </div>
+
+          <span id="count" class="count"></span>
+        </div>
+
+        <div id="step"></div>
+
+        <div class="nav">
+          <button id="prev" class="btn" type="button">← 이전</button>
+          <button id="next" class="btn primary" type="button" disabled>
+            다음 →
+          </button>
+        </div>
+      </section>
+
+      <!-- 추천 결과 영역 -->
+      <section id="result" class="result"></section>
+    </main>
+
+    <script>
+      /* =========================================================
+         1. 관리자 설정 및 상태값
+         ========================================================= */
+      const SHEET_ID = "1-77nO97ax3J2Ca-ykU7zzTVHWqm8w35cGsCvmHM24_A";
+
+      const CONFIG = {
+        questions: [],
+        products: {},
+        rules: [],
+        results: {},
+        templates: {},
+      };
+
+      let currentStep = 0;
+      let answers = {};
+
+      const $ = (selector) => document.querySelector(selector);
+
+      const escapeHtml = (value) =>
+        String(value ?? "").replace(
+          /[&<>"]/g,
+          (character) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+            })[character],
+        );
+
+      /* =========================================================
+         2. 구글 시트 데이터 불러오기
+         ========================================================= */
+      function getSheetUrl(sheetName) {
+        return (
+          `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq` +
+          `?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`
+        );
+      }
+
+      async function fetchSheet(sheetName) {
+        const response = await fetch(getSheetUrl(sheetName));
+        const text = await response.text();
+
+        const matchedResponse = text.match(
+          /setResponse\((.+)\);?\s*$/s,
+        );
+
+        const json = JSON.parse(
+          matchedResponse
+            ? matchedResponse[1]
+            : text.slice(text.indexOf("{")),
+        );
+
+        const table = json.table || {};
+        const rows = (table.rows || []).filter(
+          (row) =>
+            row.c &&
+            row.c.some((cell) => cell?.v != null),
+        );
+
+        if (!rows.length) {
+          return [];
+        }
+
+        // Google Sheets가 첫 행을 헤더로 자동 인식한 경우에는
+        // table.cols의 label을 사용합니다.
+        const columnLabels = (table.cols || []).map((column) =>
+          String(column?.label ?? "").trim(),
+        );
+
+        const hasDetectedHeaders = columnLabels.some(Boolean);
+
+        let headers;
+        let dataRows;
+
+        if (hasDetectedHeaders) {
+          headers = columnLabels.map((label, index) =>
+            label || `column_${index + 1}`,
+          );
+          dataRows = rows;
+        } else {
+          // 헤더가 자동 인식되지 않은 경우에만 첫 번째 행을 헤더로 사용합니다.
+          headers = rows[0].c.map((cell, index) =>
+            String(cell?.v ?? `column_${index + 1}`).trim(),
+          );
+          dataRows = rows.slice(1);
+        }
+
+        return dataRows.map((row) =>
+          Object.fromEntries(
+            headers.map((header, index) => [
+              header,
+              row.c[index]?.v ?? "",
+            ]),
+          ),
+        );
+      }
+
+      function parseQuestions(rows) {
+        return rows.map((row) => {
+          const options = [];
+
+          for (
+            let optionIndex = 1;
+            row[`label${optionIndex}`] !== undefined;
+            optionIndex += 1
+          ) {
+            const label = row[`label${optionIndex}`];
+
+            if (!label) {
+              continue;
+            }
+
+            options.push({
+              icon: row[`icon${optionIndex}`] || "",
+              label,
+              value: String(row[`value${optionIndex}`]),
+            });
+          }
+
+          return {
+            key: row.key,
+            text: row.question,
+            options,
+          };
+        });
+      }
+
+      /* =========================================================
+         3. 전체 데이터 초기화
+         ========================================================= */
+      async function initialize() {
+        try {
+          const [
+            questionRows,
+            productRows,
+            ruleRows,
+            resultRows,
+            templateRows,
+          ] = await Promise.all(
+            [
+              "questions",
+              "products",
+              "product_rules",
+              "product_result",
+              "ai_templates",
+            ].map(fetchSheet),
+          );
+
+          CONFIG.questions = parseQuestions(questionRows);
+
+          productRows.forEach((product) => {
+            CONFIG.products[product.key] = product;
+          });
+
+          CONFIG.rules = ruleRows
+            .map((rule) => ({
+              product: String(rule.product ?? "").trim(),
+              type: String(rule.type ?? "").trim(),
+              value: String(rule.value ?? "").trim(),
+              score: Number(rule.score) || 0,
+            }))
+            .filter(
+              (rule) =>
+                rule.product &&
+                rule.type &&
+                rule.value,
+            );
+
+          if (!CONFIG.rules.some((rule) => rule.type === "body")) {
+            throw new Error(
+              "product_rules 시트에서 body 규칙을 읽지 못했습니다. 헤더가 product / type / value / score인지 확인해주세요.",
+            );
+          }
+
+          resultRows.forEach((result) => {
+            CONFIG.results[result.product] = result;
+          });
+
+          templateRows.forEach((template) => {
+            CONFIG.templates[template.key] = template.text;
+          });
+
+          $("#load").classList.remove("on");
+          $("#quiz").style.display = "block";
+
+          renderQuestion();
+        } catch (error) {
+          $("#load").innerHTML = `
+            <p>
+              데이터를 불러오지 못했어요.<br />
+              시트 공유 설정과 시트명을 확인해주세요.
+            </p>
+          `;
+
+          console.error(error);
+        }
+      }
+
+      /* =========================================================
+         4. 질문 화면 렌더링
+         ========================================================= */
+      function renderQuestion() {
+        const question = CONFIG.questions[currentStep];
+        const totalQuestions = CONFIG.questions.length;
+
+        $("#fill").style.width =
+          `${((currentStep + 1) / totalQuestions) * 100}%`;
+
+        $("#count").textContent =
+          `${currentStep + 1} / ${totalQuestions}`;
+
+        $("#step").innerHTML = `
+          <div class="qey">
+            QUESTION ${currentStep + 1}
+          </div>
+
+          <div class="qtext">
+            ${escapeHtml(question.text)}
+          </div>
+
+          <div class="opts">
+            ${question.options
+              .map(
+                (option) => `
+                  <div
+                    class="opt ${
+                      answers[question.key] === option.value
+                        ? "sel"
+                        : ""
+                    }"
+                    data-value="${escapeHtml(option.value)}"
+                  >
+                    <div class="ico">
+                      ${option.icon}
+                    </div>
+
+                    <div>
+                      ${escapeHtml(option.label)}
+                    </div>
+                  </div>
+                `,
+              )
+              .join("")}
+          </div>
+        `;
+
+        document.querySelectorAll(".opt").forEach((element) => {
+          element.addEventListener("click", () => {
+            answers[question.key] = element.dataset.value;
+            renderQuestion();
+          });
+        });
+
+        $("#prev").disabled = currentStep === 0;
+        $("#next").disabled =
+          answers[question.key] === undefined;
+
+        $("#next").textContent =
+          currentStep === totalQuestions - 1
+            ? "AI 추천 결과 보기 →"
+            : "다음 →";
+      }
+
+      /* =========================================================
+         5. 이전 / 다음 버튼
+         ========================================================= */
+      $("#prev").addEventListener("click", () => {
+        if (currentStep > 0) {
+          currentStep -= 1;
+          renderQuestion();
+        }
+      });
+
+      $("#next").addEventListener("click", () => {
+        if (currentStep < CONFIG.questions.length - 1) {
+          currentStep += 1;
+          renderQuestion();
+          return;
+        }
+
+        analyzeAnswers();
+      });
+
+      /* =========================================================
+         6. 제품별 점수 계산
+         ========================================================= */
+      function analyzeAnswers() {
+        const candidates = {};
+
+        // 사용자가 선택한 부위와 일치하는 제품만 후보로 등록
+        CONFIG.rules
+          .filter(
+            (rule) =>
+              rule.type === "body" &&
+              String(rule.value) === answers.body,
+          )
+          .forEach((rule) => {
+            candidates[rule.product] = {
+              score: rule.score,
+              matches: 1,
+              highestMatchedScore: rule.score,
+            };
+          });
+
+        // 라이프스타일, 사용 시점, 우선 기능 점수 추가
+        CONFIG.rules.forEach((rule) => {
+          const candidate = candidates[rule.product];
+
+          if (!candidate || rule.type === "body") {
+            return;
+          }
+
+          if (answers[rule.type] === String(rule.value)) {
+            candidate.score += rule.score;
+            candidate.matches += 1;
+            candidate.highestMatchedScore = Math.max(
+              candidate.highestMatchedScore,
+              rule.score,
+            );
+          }
+        });
+
+        const ranking = Object.entries(candidates).sort(
+          (first, second) =>
+            second[1].score - first[1].score ||
+            second[1].matches - first[1].matches ||
+            second[1].highestMatchedScore -
+              first[1].highestMatchedScore,
+        );
+
+        if (!ranking.length) {
+          showNoResult();
+          return;
+        }
+
+        const bestProduct = ranking[0];
+
+        const maxPossibleScore =
+          100 +
+          getHighestRuleScore("lifestyle", answers.lifestyle) +
+          getHighestRuleScore("when", answers.when) +
+          getHighestRuleScore("priority", answers.priority);
+
+        const fitScore = Math.min(
+          99,
+          Math.max(
+            72,
+            Math.round(
+              (bestProduct[1].score / maxPossibleScore) * 100,
+            ),
+          ),
+        );
+
+        const rankedAlternativeKeys = ranking
+          .slice(1, 3)
+          .map(([productKey]) => productKey);
+
+        renderResult(
+          bestProduct[0],
+          fitScore,
+          rankedAlternativeKeys,
+        );
+      }
+
+      function getHighestRuleScore(type, value) {
+        const scores = CONFIG.rules
+          .filter(
+            (rule) =>
+              rule.type === type &&
+              String(rule.value) === value,
+          )
+          .map((rule) => rule.score);
+
+        return scores.length ? Math.max(...scores) : 0;
+      }
+
+      /* =========================================================
+         7. 결과 화면 렌더링
+         ========================================================= */
+      function renderResult(
+        productKey,
+        fitScore,
+        rankedAlternativeKeys,
+      ) {
+        const product = CONFIG.products[productKey];
+        const result = CONFIG.results[productKey] || {};
+
+        const alternatives = [
+          result.alt1,
+          result.alt2,
+          ...rankedAlternativeKeys,
+        ]
+          .filter(
+            (key, index, array) =>
+              key &&
+              key !== productKey &&
+              array.indexOf(key) === index,
+          )
+          .slice(0, 2);
+
+        const analysisTexts = [
+          CONFIG.templates[
+            `lifestyle_${answers.lifestyle}`
+          ],
+          CONFIG.templates[`when_${answers.when}`],
+          CONFIG.templates[
+            `priority_${answers.priority}`
+          ],
+        ].filter(Boolean);
+
+        // 기존 적합도 점수를 5점 만점 추천 별점으로 환산
+        const recommendationRating = Math.min(
+          5,
+          Math.max(3.5, fitScore / 20),
+        );
+        const recommendationRatingText =
+          recommendationRating.toFixed(1);
+        const starFillWidth =
+          (recommendationRating / 5) * 100;
+
+        $("#quiz").style.display = "none";
+        $("#result").classList.add("on");
+
+        $("#result").innerHTML = `
+          <div
+            class="rating"
+            aria-label="추천 별점 ${recommendationRatingText}점"
+          >
+            <div class="rating-stars" aria-hidden="true">
+              <div class="rating-stars-base">★★★★★</div>
+
+              <div
+                class="rating-stars-fill"
+                style="width: ${starFillWidth}%"
+              >
+                ★★★★★
+              </div>
+            </div>
+
+            <div class="rating-info">
+              <strong>${recommendationRatingText}</strong>
+              <span>/ 5.0 추천 별점</span>
+            </div>
+          </div>
+
+          <div class="analysis">
+            <h3>
+              ${escapeHtml(
+                CONFIG.templates.analysis_title ||
+                  "AI 생활 패턴 분석",
+              )}
+            </h3>
+
+            ${analysisTexts
+              .map(
+                (text) => `
+                  <p>${escapeHtml(text)}</p>
+                `,
+              )
+              .join("")}
+          </div>
+
+          <div class="card">
+            <span class="badge">
+              🎯
+              ${escapeHtml(
+                CONFIG.templates.recommend_title ||
+                  "가장 잘 맞는 제품",
+              )}
+            </span>
+
+            <img
+              src="${escapeHtml(product.thumb)}"
+              alt="${escapeHtml(product.name)}"
+            />
+
+            <div class="name">
+              ${escapeHtml(product.name)}
+            </div>
+
+            <div class="summary">
+              <strong>
+                ${escapeHtml(
+                  result.result_title || "맞춤 추천",
+                )}
+              </strong>
+
+              <br />
+
+              ${escapeHtml(
+                result.summary ||
+                  "고객님의 응답과 가장 높은 적합도를 기록한 제품입니다.",
+              )}
+            </div>
+
+            <div class="sect">
+              <h3>
+                ${escapeHtml(
+                  CONFIG.templates.why_title ||
+                    "이런 이유로 추천드려요",
+                )}
+              </h3>
+
+              <ul class="why">
+                ${[result.why1, result.why2, result.why3]
+                  .filter(Boolean)
+                  .map(
+                    (reason) => `
+                      <li>${escapeHtml(reason)}</li>
+                    `,
+                  )
+                  .join("")}
+              </ul>
+            </div>
+
+            <div class="sect">
+              <h3>
+                ${escapeHtml(
+                  CONFIG.templates.tip_title ||
+                    "추천 사용 루틴",
+                )}
+              </h3>
+
+              <div class="tip">
+                ${escapeHtml(result.usage_tip)}
+              </div>
+            </div>
+
+            <a
+              class="buy"
+              href="${escapeHtml(product.link)}"
+              target="_blank"
+              rel="noopener"
+            >
+              ${escapeHtml(
+                product.link_label || "제품 보러가기",
+              )}
+              ↗
+            </a>
+          </div>
+
+          <div class="alts">
+            <h3>
+              ${escapeHtml(
+                CONFIG.templates.alt_title ||
+                  "함께 비교해볼 제품",
+              )}
+            </h3>
+
+            ${alternatives
+              .map((alternativeKey) =>
+                renderAlternativeProduct(
+                  alternativeKey,
+                ),
+              )
+              .join("")}
+          </div>
+
+          <button
+            class="restart"
+            type="button"
+            onclick="restartQuiz()"
+          >
+            ↺ 처음부터 다시 하기
+          </button>
+        `;
+      }
+
+      function renderAlternativeProduct(productKey) {
+        const product = CONFIG.products[productKey];
+
+        if (!product) {
+          return "";
+        }
+
+        const result = CONFIG.results[productKey] || {};
+
+        return `
+          <a
+            class="alt"
+            href="${escapeHtml(product.link)}"
+            target="_blank"
+            rel="noopener"
+          >
+            <strong>
+              ${escapeHtml(product.name)}
+            </strong>
+
+            <br />
+
+            <small>
+              ${escapeHtml(
+                result.result_title ||
+                  "다른 조건에 잘 맞는 제품",
+              )}
+            </small>
+          </a>
+        `;
+      }
+
+      function showNoResult() {
+        $("#quiz").style.display = "none";
+        $("#result").classList.add("on");
+
+        $("#result").innerHTML = `
+          <div class="card">
+            <div class="name">
+              추천 결과를 찾지 못했어요.
+            </div>
+
+            <div class="summary">
+              선택한 부위에 연결된 제품 규칙이 있는지
+              product_rules 시트를 확인해주세요.
+            </div>
+
+            <button
+              class="restart"
+              type="button"
+              onclick="restartQuiz()"
+            >
+              ↺ 처음부터 다시 하기
+            </button>
+          </div>
+        `;
+      }
+
+      /* =========================================================
+         8. 설문 초기화
+         ========================================================= */
+      function restartQuiz() {
+        currentStep = 0;
+        answers = {};
+
+        $("#result").classList.remove("on");
+        $("#result").innerHTML = "";
+        $("#quiz").style.display = "block";
+
+        renderQuestion();
+      }
+
+      /* =========================================================
+         9. 실행
+         ========================================================= */
+      initialize();
+    </script>
+  </body>
 </html>
