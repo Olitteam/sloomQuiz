@@ -11,7 +11,7 @@
          1. 기본 색상 및 공통 설정
          ========================================================= */
       :root {
-        --bg: #fbfbfb;
+        --bg: #f7f5f2;
         --card: #ffffff;
         --line: #e7e2dc;
 
@@ -19,7 +19,7 @@
         --sub: #6c655f;
         --muted: #9b938b;
 
-        --accent: #002353;
+        --accent: #315d8a;
         --accent-bg: #edf3f9;
       }
 
@@ -487,7 +487,7 @@
 
         // 필수: Apps Script를 웹앱으로 배포한 뒤 생성되는 /exec URL을 입력하세요.
         // 예: https://script.google.com/macros/s/XXXXXXXXXXXX/exec
-        SHEET_LOG_ENDPOINT: "https://script.google.com/macros/s/AKfycbyVLmYdM_RYEHyRm8Ht5ALdn7iIkzQ5cjI1rN0aBUzuGsyk4imYXyh903Tu7Xsqa4WZ/exec",
+        SHEET_LOG_ENDPOINT: "",
 
         DEBUG: false,
       };
@@ -509,6 +509,7 @@
         gtag("config", TRACKING.GA_MEASUREMENT_ID);
       }
 
+      // 한 번의 브라우저 방문 세션을 구분하는 ID입니다.
       const recommendationSessionId = (() => {
         const storageKey = "sloom_recommend_session_id";
         let sessionId = sessionStorage.getItem(storageKey);
@@ -522,6 +523,23 @@
         }
 
         return sessionId;
+      })();
+
+      // 같은 브라우저의 동일 사용자를 구분하는 영구 ID입니다.
+      // 브라우저의 쿠키 및 사이트 데이터를 삭제하기 전까지 유지됩니다.
+      const recommendationVisitorId = (() => {
+        const storageKey = "sloom_recommend_visitor_id";
+        let visitorId = localStorage.getItem(storageKey);
+
+        if (!visitorId) {
+          visitorId =
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `visitor_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+          localStorage.setItem(storageKey, visitorId);
+        }
+
+        return visitorId;
       })();
 
       let recommendationStarted = false;
@@ -541,7 +559,7 @@
         const logData = {
           event_name: eventName,
           session_id: recommendationSessionId,
-          user_id: "",
+          user_id: recommendationVisitorId,
           event_time: new Date().toISOString(),
           page_url: window.location.href,
           source: new URLSearchParams(window.location.search).get("utm_source") || "",
@@ -782,16 +800,26 @@
           $("#load").classList.remove("on");
           $("#quiz").style.display = "block";
 
-          // 페이지가 정상적으로 로드될 때마다 조회수 1회를 기록합니다.
-          trackEvent("page_view", {
-            page_location: window.location.href,
-            page_title: document.title,
-          });
+          // 조회수는 동일 브라우저에서 최초 1회만 기록합니다.
+          // 브라우저의 쿠키 및 사이트 데이터를 삭제하면 다시 신규 조회로 기록됩니다.
+          const uniqueViewStorageKey = "sloom_recommend_page_view_recorded";
 
-          // 추천 서비스 진입 이벤트도 별도로 기록합니다.
+          if (!localStorage.getItem(uniqueViewStorageKey)) {
+            trackEvent("page_view", {
+              page_location: window.location.href,
+              page_title: document.title,
+              visitor_id: recommendationVisitorId,
+              unique_view: 1,
+            });
+
+            localStorage.setItem(uniqueViewStorageKey, new Date().toISOString());
+          }
+
+          // 추천 서비스 진입 이벤트는 방문할 때마다 기록합니다.
           trackEvent("recommend_view", {
             page_location: window.location.href,
             page_title: document.title,
+            visitor_id: recommendationVisitorId,
           });
 
           renderQuestion();
