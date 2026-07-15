@@ -626,26 +626,6 @@
         $("#result").classList.add("on");
 
         $("#result").innerHTML = `
-          <div
-            class="rating"
-            aria-label="추천 별점 ${recommendationRatingText}점"
-          >
-            <div class="rating-stars" aria-hidden="true">
-              <div class="rating-stars-base">★★★★★</div>
-
-              <div
-                class="rating-stars-fill"
-                style="width: ${starFillWidth}%"
-              >
-                ★★★★★
-              </div>
-            </div>
-
-            <div class="rating-info">
-              <strong>${recommendationRatingText}</strong>
-              <span>/ 5.0 추천 별점</span>
-            </div>
-          </div>
 
           <div class="analysis">
             <h3>
