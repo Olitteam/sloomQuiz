@@ -1,4 +1,4 @@
- /* =========================================================
+/* =========================================================
          1. 관리자 설정 및 상태값
          ========================================================= */
       const SHEET_ID = "1-77nO97ax3J2Ca-ykU7zzTVHWqm8w35cGsCvmHM24_A";
@@ -94,10 +94,12 @@
           source: new URLSearchParams(window.location.search).get("utm_source") || "",
           medium: new URLSearchParams(window.location.search).get("utm_medium") || "",
           campaign: new URLSearchParams(window.location.search).get("utm_campaign") || "",
-          body: answers.body || "",
+          goal: answers.goal || "",
           lifestyle: answers.lifestyle || "",
           when: answers.when || "",
+          posture: answers.posture || "",
           priority: answers.priority || "",
+          body: answers.body || "",
           ...payload,
         };
 
@@ -477,26 +479,21 @@
       function analyzeAnswers() {
         const candidates = {};
 
-        // 사용자가 선택한 부위와 일치하는 제품만 후보로 등록
-        CONFIG.rules
-          .filter(
-            (rule) =>
-              rule.type === "body" &&
-              String(rule.value) === answers.body,
-          )
-          .forEach((rule) => {
-            candidates[rule.product] = {
-              score: rule.score,
-              matches: 1,
-              highestMatchedScore: rule.score,
-            };
-          });
+        // 부위로 후보를 제한하지 않고 모든 제품을 동일하게 후보로 등록합니다.
+        // 사용자의 고민과 사용 자세가 제품 형태를 우선 결정하고,
+        // 부위는 마지막 가산점으로만 반영됩니다.
+        Object.keys(CONFIG.products).forEach((productKey) => {
+          candidates[productKey] = {
+            score: 0,
+            matches: 0,
+            highestMatchedScore: 0,
+          };
+        });
 
-        // 라이프스타일, 사용 시점, 우선 기능 점수 추가
         CONFIG.rules.forEach((rule) => {
           const candidate = candidates[rule.product];
 
-          if (!candidate || rule.type === "body") {
+          if (!candidate) {
             return;
           }
 
@@ -510,13 +507,15 @@
           }
         });
 
-        const ranking = Object.entries(candidates).sort(
-          (first, second) =>
-            second[1].score - first[1].score ||
-            second[1].matches - first[1].matches ||
-            second[1].highestMatchedScore -
-              first[1].highestMatchedScore,
-        );
+        const ranking = Object.entries(candidates)
+          .filter(([, candidate]) => candidate.matches > 0)
+          .sort(
+            (first, second) =>
+              second[1].score - first[1].score ||
+              second[1].matches - first[1].matches ||
+              second[1].highestMatchedScore -
+                first[1].highestMatchedScore,
+          );
 
         if (!ranking.length) {
           showNoResult();
@@ -525,18 +524,19 @@
 
         const bestProduct = ranking[0];
 
-        const maxPossibleScore =
-          100 +
-          getHighestRuleScore("lifestyle", answers.lifestyle) +
-          getHighestRuleScore("when", answers.when) +
-          getHighestRuleScore("priority", answers.priority);
+        // 질문이 추가되거나 순서가 바뀌어도 모든 응답 타입을 자동 반영합니다.
+        const maxPossibleScore = Object.entries(answers).reduce(
+          (total, [type, value]) =>
+            total + getHighestRuleScore(type, value),
+          0,
+        );
 
         const fitScore = Math.min(
           99,
           Math.max(
             72,
             Math.round(
-              (bestProduct[1].score / maxPossibleScore) * 100,
+              (bestProduct[1].score / Math.max(maxPossibleScore, 1)) * 100,
             ),
           ),
         );
@@ -589,13 +589,12 @@
           .slice(0, 2);
 
         const analysisTexts = [
-          CONFIG.templates[
-            `lifestyle_${answers.lifestyle}`
-          ],
+          CONFIG.templates[`goal_${answers.goal}`],
+          CONFIG.templates[`lifestyle_${answers.lifestyle}`],
           CONFIG.templates[`when_${answers.when}`],
-          CONFIG.templates[
-            `priority_${answers.priority}`
-          ],
+          CONFIG.templates[`posture_${answers.posture}`],
+          CONFIG.templates[`priority_${answers.priority}`],
+          CONFIG.templates[`body_${answers.body}`],
         ].filter(Boolean);
 
         // 기존 적합도 점수를 5점 만점 추천 별점으로 환산
@@ -616,17 +615,19 @@
           recommended_product_name: product.name,
           recommendation_score: fitScore,
           recommendation_rating: currentRecommendationRating,
-          body: answers.body || "",
+          goal: answers.goal || "",
           lifestyle: answers.lifestyle || "",
           when: answers.when || "",
+          posture: answers.posture || "",
           priority: answers.priority || "",
+          body: answers.body || "",
         });
 
         $("#quiz").style.display = "none";
         $("#result").classList.add("on");
 
         $("#result").innerHTML = `
-
+ 
           <div class="analysis">
             <h3>
               ${escapeHtml(
@@ -728,7 +729,7 @@
             <h3>
               ${escapeHtml(
                 CONFIG.templates.alt_title ||
-                  "함께 추천하는 제품",
+                  "함께 비교해볼 제품",
               )}
             </h3>
 
@@ -861,10 +862,12 @@
             click_rank: rank,
             click_type: clickType,
             recommendation_rating: currentRecommendationRating,
-            body: answers.body || "",
+            goal: answers.goal || "",
             lifestyle: answers.lifestyle || "",
             when: answers.when || "",
+            posture: answers.posture || "",
             priority: answers.priority || "",
+            body: answers.body || "",
           },
         );
       }
