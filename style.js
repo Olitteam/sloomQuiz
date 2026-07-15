@@ -1,5 +1,4 @@
-
-      /* =========================================================
+ /* =========================================================
          1. 관리자 설정 및 상태값
          ========================================================= */
       const SHEET_ID = "1-77nO97ax3J2Ca-ykU7zzTVHWqm8w35cGsCvmHM24_A";
@@ -330,19 +329,27 @@
           $("#load").classList.remove("on");
           $("#quiz").style.display = "block";
 
-          // 조회수는 동일 브라우저에서 최초 1회만 기록합니다.
-          // 브라우저의 쿠키 및 사이트 데이터를 삭제하면 다시 신규 조회로 기록됩니다.
-          const uniqueViewStorageKey = "sloom_recommend_page_view_recorded";
+          // 조회수는 동일 브라우저에서 하루 1회만 기록합니다.
+          // 같은 날 새로고침하거나 재방문해도 증가하지 않고,
+          // 날짜가 바뀐 뒤 다시 방문하면 새로운 page_view를 1회 기록합니다.
+          const dailyViewStorageKey = "sloom_recommend_page_view_date";
+          const todayKey = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Seoul",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).format(new Date());
 
-          if (!localStorage.getItem(uniqueViewStorageKey)) {
+          if (localStorage.getItem(dailyViewStorageKey) !== todayKey) {
             trackEvent("page_view", {
               page_location: window.location.href,
               page_title: document.title,
               visitor_id: recommendationVisitorId,
               unique_view: 1,
+              view_date: todayKey,
             });
 
-            localStorage.setItem(uniqueViewStorageKey, new Date().toISOString());
+            localStorage.setItem(dailyViewStorageKey, todayKey);
           }
 
           // 추천 서비스 진입 이벤트는 방문할 때마다 기록합니다.
@@ -741,7 +748,7 @@
             <h3>
               ${escapeHtml(
                 CONFIG.templates.alt_title ||
-                  "함께 비교해볼 제품",
+                  "함께 추천하는 제품",
               )}
             </h3>
 
@@ -781,19 +788,81 @@
             target="_blank"
             rel="noopener"
             onclick="trackProductClick('${escapeHtml(productKey)}', ${rank}, 'alternative')"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 14px;
+              margin-top: 10px;
+              padding: 12px;
+              border: 1px solid var(--line);
+              border-radius: 12px;
+              background: #ffffff;
+              color: var(--text);
+              text-decoration: none;
+              transition:
+                border-color 0.15s ease,
+                transform 0.1s ease;
+            "
           >
-            <strong>
-              ${escapeHtml(product.name)}
-            </strong>
+            <div
+              style="
+                width: 82px;
+                height: 82px;
+                flex-shrink: 0;
+                overflow: hidden;
+                border-radius: 10px;
+                background: #f4f1ed;
+              "
+            >
+              <img
+                src="${escapeHtml(product.thumb)}"
+                alt="${escapeHtml(product.name)}"
+                loading="lazy"
+                style="
+                  display: block;
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                "
+              />
+            </div>
 
-            <br />
+            <div style="min-width: 0; flex: 1;">
+              <div
+                style="
+                  margin-bottom: 5px;
+                  font-size: 14px;
+                  font-weight: 700;
+                  line-height: 1.45;
+                "
+              >
+                ${escapeHtml(product.name)}
+              </div>
 
-            <small>
-              ${escapeHtml(
-                result.result_title ||
-                  "다른 조건에 잘 맞는 제품",
-              )}
-            </small>
+              <div
+                style="
+                  color: var(--sub);
+                  font-size: 12px;
+                  line-height: 1.55;
+                "
+              >
+                ${escapeHtml(
+                  result.result_title ||
+                    "다른 조건에 잘 맞는 제품",
+                )}
+              </div>
+            </div>
+
+            <span
+              aria-hidden="true"
+              style="
+                flex-shrink: 0;
+                color: var(--muted);
+                font-size: 18px;
+              "
+            >
+              →
+            </span>
           </a>
         `;
       }
