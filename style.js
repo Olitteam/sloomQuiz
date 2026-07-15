@@ -13,7 +13,7 @@
          ========================================================= */
       const TRACKING = {
         // 선택 사항: GA4 측정 ID. 사용하지 않으면 빈 값으로 두세요.
-        GA_MEASUREMENT_ID: "",
+        GA_MEASUREMENT_ID: "AKfycbyVLmYdM_RYEHyRm8Ht5ALdn7iIkzQ5cjI1rN0aBUzuGsyk4imYXyh903Tu7Xsqa4WZ",
 
         // 필수: Apps Script를 웹앱으로 배포한 뒤 생성되는 /exec URL을 입력하세요.
         // 예: https://script.google.com/macros/s/XXXXXXXXXXXX/exec
