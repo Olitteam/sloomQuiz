@@ -73,7 +73,6 @@
 
       let recommendationStarted = false;
       let currentRecommendedProduct = "";
-      let currentRecommendationRating = 0;
 
       function sendEventToGoogleSheet(eventName, payload) {
         if (!TRACKING.SHEET_LOG_ENDPOINT) {
@@ -476,13 +475,79 @@
       /* =========================================================
          6. 제품별 점수 계산
          ========================================================= */
+      function getBodyEligibleProductKeys() {
+        const selectedBody = String(answers.body || "");
+        const selectedGoal = String(answers.goal || "");
+
+        return Object.keys(CONFIG.products).filter((productKey) => {
+          /*
+           * 바디풀고컷 전용 조건
+           *
+           * - 목·어깨와 눈에는 사용하지 않으므로 후보에서 완전히 제외
+           * - 바디라인·경락 목적을 가장 우선
+           * - 순환·붓기 또는 전신 관리 목적에서도 후보 허용
+           * - 단순 뭉침 관리 목적이라면 일반 부위 전용 마사지기를 우선
+           */
+          if (productKey === "body_fullgo_1003") {
+            if (selectedBody === "neck" || selectedBody === "eye") {
+              return false;
+            }
+
+            return (
+              selectedGoal === "bodyline" ||
+              selectedGoal === "circulation" ||
+              selectedBody === "whole"
+            );
+          }
+
+          /*
+           * 일반 제품은 product_rules의 body 규칙이
+           * 사용자가 선택한 부위와 일치할 때만 후보가 됩니다.
+           */
+          return CONFIG.rules.some(
+            (rule) =>
+              rule.product === productKey &&
+              rule.type === "body" &&
+              String(rule.value) === selectedBody,
+          );
+        });
+      }
+
+      function getPostureEligibleProductKeys(productKeys) {
+        const selectedPosture = String(answers.posture || "");
+
+        if (!selectedPosture || selectedPosture === "any") {
+          return productKeys;
+        }
+
+        const postureMatchedKeys = productKeys.filter((productKey) =>
+          CONFIG.rules.some(
+            (rule) =>
+              rule.product === productKey &&
+              rule.type === "posture" &&
+              String(rule.value) === selectedPosture,
+          ),
+        );
+
+        /*
+         * 사용 자세는 필수 조건입니다.
+         * 선택한 자세와 일치하는 제품만 후보로 유지하며,
+         * 일치 제품이 없더라도 누워서 쓰는 제품 등으로 조건을 완화하지 않습니다.
+         */
+        return postureMatchedKeys;
+      }
+
       function analyzeAnswers() {
         const candidates = {};
 
-        // 부위로 후보를 제한하지 않고 모든 제품을 동일하게 후보로 등록합니다.
-        // 사용자의 고민과 사용 자세가 제품 형태를 우선 결정하고,
-        // 부위는 마지막 가산점으로만 반영됩니다.
-        Object.keys(CONFIG.products).forEach((productKey) => {
+        // 1단계: 선택 부위와 제품 사용 가능 부위로 후보 제한
+        const bodyEligibleKeys = getBodyEligibleProductKeys();
+
+        // 2단계: 선택한 사용 자세와 맞는 제품으로 다시 제한
+        const eligibleProductKeys =
+          getPostureEligibleProductKeys(bodyEligibleKeys);
+
+        eligibleProductKeys.forEach((productKey) => {
           candidates[productKey] = {
             score: 0,
             matches: 0,
@@ -490,6 +555,7 @@
           };
         });
 
+        // 3단계: 남은 후보 안에서 고민·생활 패턴·사용 시점·기능 점수 합산
         CONFIG.rules.forEach((rule) => {
           const candidate = candidates[rule.product];
 
@@ -524,19 +590,28 @@
 
         const bestProduct = ranking[0];
 
-        // 질문이 추가되거나 순서가 바뀌어도 모든 응답 타입을 자동 반영합니다.
+        /*
+         * 결과 화면에서는 별점을 표시하지 않지만,
+         * 내부 추천 점수는 로그 분석용으로 유지합니다.
+         */
         const maxPossibleScore = Object.entries(answers).reduce(
           (total, [type, value]) =>
-            total + getHighestRuleScore(type, value),
+            total + getHighestRuleScoreForCandidates(
+              type,
+              value,
+              eligibleProductKeys,
+            ),
           0,
         );
 
         const fitScore = Math.min(
           99,
           Math.max(
-            72,
+            0,
             Math.round(
-              (bestProduct[1].score / Math.max(maxPossibleScore, 1)) * 100,
+              (bestProduct[1].score /
+                Math.max(maxPossibleScore, 1)) *
+                100,
             ),
           ),
         );
@@ -550,6 +625,25 @@
           fitScore,
           rankedAlternativeKeys,
         );
+      }
+
+      function getHighestRuleScoreForCandidates(
+        type,
+        value,
+        eligibleProductKeys,
+      ) {
+        const eligibleSet = new Set(eligibleProductKeys);
+
+        const scores = CONFIG.rules
+          .filter(
+            (rule) =>
+              eligibleSet.has(rule.product) &&
+              rule.type === type &&
+              String(rule.value) === String(value),
+          )
+          .map((rule) => rule.score);
+
+        return scores.length ? Math.max(...scores) : 0;
       }
 
       function getHighestRuleScore(type, value) {
@@ -597,24 +691,12 @@
           CONFIG.templates[`body_${answers.body}`],
         ].filter(Boolean);
 
-        // 기존 적합도 점수를 5점 만점 추천 별점으로 환산
-        const recommendationRating = Math.min(
-          5,
-          Math.max(3.5, fitScore / 20),
-        );
-        const recommendationRatingText =
-          recommendationRating.toFixed(1);
-        const starFillWidth =
-          (recommendationRating / 5) * 100;
-
         currentRecommendedProduct = productKey;
-        currentRecommendationRating = Number(recommendationRatingText);
 
         trackEvent("recommend_result", {
           recommended_product: productKey,
           recommended_product_name: product.name,
           recommendation_score: fitScore,
-          recommendation_rating: currentRecommendationRating,
           goal: answers.goal || "",
           lifestyle: answers.lifestyle || "",
           when: answers.when || "",
@@ -627,7 +709,6 @@
         $("#result").classList.add("on");
 
         $("#result").innerHTML = `
- 
           <div class="analysis">
             <h3>
               ${escapeHtml(
@@ -861,8 +942,7 @@
             clicked_product_name: product.name || "",
             click_rank: rank,
             click_type: clickType,
-            recommendation_rating: currentRecommendationRating,
-            goal: answers.goal || "",
+              goal: answers.goal || "",
             lifestyle: answers.lifestyle || "",
             when: answers.when || "",
             posture: answers.posture || "",
@@ -883,8 +963,8 @@
             </div>
 
             <div class="summary">
-              선택한 부위에 연결된 제품 규칙이 있는지
-              product_rules 시트를 확인해주세요.
+              선택한 부위와 사용 자세를 모두 만족하는 제품이 없어요.<br />
+              사용 방식을 다시 선택해 주세요.
             </div>
 
             <button
@@ -904,14 +984,12 @@
       function restartQuiz() {
         trackEvent("recommend_restart", {
           recommended_product: currentRecommendedProduct,
-          recommendation_rating: currentRecommendationRating,
         });
 
         currentStep = 0;
         answers = {};
         recommendationStarted = false;
         currentRecommendedProduct = "";
-        currentRecommendationRating = 0;
 
         $("#result").classList.remove("on");
         $("#result").innerHTML = "";
