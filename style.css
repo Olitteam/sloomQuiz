@@ -227,50 +227,6 @@
         display: block;
       }
 
-      .rating {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin: 20px 0 10px;
-      }
-
-      .rating-stars {
-        position: relative;
-        display: inline-block;
-        font-size: 27px;
-        line-height: 1;
-        letter-spacing: 3px;
-      }
-
-      .rating-stars-base {
-        color: #d8d2cb;
-      }
-
-      .rating-stars-fill {
-        position: absolute;
-        top: 0;
-        left: 0;
-        overflow: hidden;
-        color: #f2b84b;
-        white-space: nowrap;
-      }
-
-      .rating-info {
-        display: flex;
-        align-items: baseline;
-        gap: 5px;
-      }
-
-      .rating-info strong {
-        color: var(--text);
-        font-size: 22px;
-      }
-
-      .rating-info span {
-        color: var(--muted);
-        font-size: 13px;
-      }
-
       .analysis {
         margin: 18px 0;
         padding: 18px;
