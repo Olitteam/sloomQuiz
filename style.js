@@ -438,6 +438,21 @@
               question_step: currentStep + 1,
             });
 
+            // 첫 질문에서 바디라인·경락을 선택하면 바로 바디풀고컷 결과를 보여줍니다.
+            if (
+              question.key === "goal" &&
+              element.dataset.value === "bodyline"
+            ) {
+              answers.body = "fullbody";
+              answers.posture = answers.posture || "any";
+              renderResult(
+                "body_fullgo_1003",
+                100,
+                ["abdomen", "pelvis"],
+              );
+              return;
+            }
+
             renderQuestion();
           });
         });
@@ -489,14 +504,19 @@
            * - 단순 뭉침 관리 목적이라면 일반 부위 전용 마사지기를 우선
            */
           if (productKey === "body_fullgo_1003") {
+            // 바디라인·경락 선택은 부위와 관계없이 바디풀고컷 우선
+            if (selectedGoal === "bodyline") {
+              return true;
+            }
+
+            // 일반 추천에서는 목·어깨와 눈 사용 불가
             if (selectedBody === "neck" || selectedBody === "eye") {
               return false;
             }
 
             return (
-              selectedGoal === "bodyline" ||
               selectedGoal === "circulation" ||
-              selectedBody === "whole"
+              selectedBody === "fullbody"
             );
           }
 
@@ -530,11 +550,14 @@
         );
 
         /*
-         * 사용 자세는 필수 조건입니다.
-         * 선택한 자세와 일치하는 제품만 후보로 유지하며,
-         * 일치 제품이 없더라도 누워서 쓰는 제품 등으로 조건을 완화하지 않습니다.
+         * 선택 자세와 맞는 제품이 있으면 해당 제품만 사용합니다.
+         * 일치 제품이 하나도 없을 때는 다른 부위로 넓히지 않고,
+         * 동일 부위 후보 안에서 가장 가까운 제품을 추천합니다.
+         * 이를 통해 추천 결과 없음 화면을 최소화합니다.
          */
-        return postureMatchedKeys;
+        return postureMatchedKeys.length
+          ? postureMatchedKeys
+          : productKeys;
       }
 
       function analyzeAnswers() {
@@ -584,7 +607,23 @@
           );
 
         if (!ranking.length) {
-          showNoResult();
+          // 시트 규칙 누락 등 예외 상황에서도 결과를 비우지 않습니다.
+          const fallbackKey =
+            answers.body === "eye"
+              ? "eye"
+              : answers.body === "hand"
+                ? "hand"
+                : answers.body === "foot"
+                  ? "foot_874"
+                  : answers.body === "back"
+                    ? "back_636"
+                    : answers.body === "core"
+                      ? "abdomen"
+                      : answers.body === "fullbody"
+                        ? "body_fullgo_1003"
+                        : "neck_pillow_909";
+
+          renderResult(fallbackKey, 70, []);
           return;
         }
 
