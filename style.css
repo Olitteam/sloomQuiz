@@ -268,6 +268,7 @@
 
       .badge {
         display: inline-block;
+        margin-bottom: 5px;
         padding: 5px 9px;
         border-radius: 5px;
         background: var(--accent-bg);
@@ -355,7 +356,15 @@
         color: var(--sub);
         cursor: pointer;
       }
-
+      .chatLabel p { 
+        margin: 0;
+        padding: 15px 0;
+        color: var(--sub);
+        font-size: 14px; 
+        text-align:center;
+        cursor:pointer;
+      }
+      .chatLabel p a { color: var(--sub); text-decoration: none; }
       /* =========================================================
          9. 모바일 대응
          ========================================================= */
@@ -371,4 +380,5 @@
         .qtext {
           font-size: 18px;
         }
+        .name { font-size: 20px; }
       }
