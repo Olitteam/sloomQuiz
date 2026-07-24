@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" type="text/css" href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css'>
+    <link href="https://fonts.googleapis.com/css2?family=Poor+Story&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Pretendard,sans-serif; }
+        ul li { list-style-type: none; }
+        a {text-decoration: none; }
+        #quizMain { padding: 4.99% 0 0; text-align: center; background: linear-gradient(180deg, #AED2FF 0%, #EBF4FF 43.37%); }
+        .character { position: relative; z-index: 9999; max-width: 749px; margin:0 auto -79px; }
+        .character img { width: 100%; }
+        .contentsBox { position: relative; padding: 3.885% 0 4.99%; overflow: hidden; z-index: 99;}
+        .contentsBox::before { content: ""; position: absolute; left:50%; top: 0; width: 2300px; height: 650px; border-top-left-radius: 50%;  border-top-right-radius: 50%; background: #FFF; z-index: -1; transform: translateX(-50%);}
+        .contentsBox h1 { margin-bottom: 15px; color: #002454; font-size: 27.931px; font-weight: 700; letter-spacing: -0.112px; }
+        .contentsBox p { color: #000; font-size: 20px; font-weight: 400; line-height: 138.102%; letter-spacing: -0.08px; }
+        .cardBox { margin: 48px 0 30px; }
+        .cardBox ul { display: flex; justify-content: center; gap:  15px; line-height: 1; }
+        .cardBox ul li { display: flex; flex-direction: column; gap: 20px; width: 155px; padding: 28px 42px; border-radius: 11px; background: #F7FAFF; }
+        .cardBox ul li span { font-size: 50px; }
+        .cardBox ul li p { color: #000; font-size: 20px; font-weight: 700; }
+        .quizeBtn { display: inline-flex; justify-content: center; align-items: center; gap: 10px; border-radius: 15px; background: #002454; }
+        .quizeBtn a { padding: 19px 66px;  color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.088px; }
+        .quizeBtn a  span { padding-left: 10px; font-weight: 400; font-family: "Poor Story", system-ui; }
+        @media (max-width: 768px) {
+             #quizMain { padding: 23.59% 0 0; }
+             .character { margin: 0 auto -11%; }
+             .contentsBox { padding: 13.27% 0 36.176%; }
+             .contentsBox::before {     width: 1348px; }
+             .contentsBox h1 { font-size: 16px; }
+             .contentsBox p { font-size: 14px; }
+             .cardBox { margin: 42px 0 23px; }
+             .cardBox ul { gap: 5px; padding: 0 25px; }
+             .cardBox ul li { gap: 15px; width: 100%; padding: 21.092px 0; border-radius: 8px; flex: 1; }
+             .cardBox ul li span { font-size: 37px; }
+             .cardBox ul li p { font-size: 13px; }
+             .quizeBtn { border-radius: 11px; }
+             .quizeBtn a { padding: 14.313px 49.717px; font-size: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="quizMain">
+        <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="137" height="27" viewBox="0 0 137 27" fill="none">
+                <path d="M3.58604 5.40975C3.58604 5.40975 29.6001 5.40975 29.8908 5.40975V0.0131198H29.1377C24.1874 0.0131198 16.2882 -0.0217925 11.3393 0.0332614C9.95197 0.0493748 8.52816 0.201109 7.19223 0.511291C4.04848 1.23908 1.60784 2.74836 0.474742 5.48494C0.150225 6.27181 -0.00527229 7.06405 0.000136313 7.83212C0.01501 8.28598 0.0853219 8.65524 0.132647 9.06076C0.776271 14.5286 4.23102 15.7089 5.79951 15.7089H7.34232C14.0044 15.7089 17.0832 15.7089 23.7453 15.7089C23.7858 15.7089 23.8237 15.7156 23.8629 15.7156L25.879 15.7089C27.5529 15.7035 28.9132 16.967 28.9132 18.5274C28.9132 20.0877 27.5597 21.3458 25.8898 21.3458H23.867C23.825 21.3458 23.7858 21.3526 23.7439 21.3526C17.0819 21.3526 10.4198 21.3526 3.75777 21.3526H0.000136313V26.7425H3.70233C8.62686 26.7425 13.5514 26.7774 18.4746 26.7237C19.486 26.7129 20.5015 26.6445 21.4939 26.482C25.2124 25.8737 28.1398 24.3483 29.4135 21.2707C29.7394 20.4838 29.8935 19.6915 29.8881 18.9235C29.8935 18.1554 29.738 17.3632 29.4135 16.5763C29.3783 16.4917 29.3391 16.4004 29.2972 16.3051C27.9045 13.1254 25.3476 10.3297 21.233 10.3297L5.89146 10.3498L3.59416 10.3579C3.41432 10.3579 3.25612 10.2934 3.0871 10.2585C2.30961 10.096 1.65923 9.61399 1.33336 8.91574C1.18597 8.59885 1.09132 8.2551 1.09132 7.88315C1.09132 6.5162 2.20685 5.40706 3.58469 5.40706L3.58604 5.40975Z" fill="#002454"/>
+                <path d="M38.1545 0.00241089H32.7081V26.7559H38.1545V0.00241089Z" fill="#002454"/>
+                <path d="M55.6334 0.000213623C47.5353 0.000213623 40.9693 5.98901 40.9693 13.377C40.9693 20.7649 47.534 26.7537 55.6334 26.7537C63.7328 26.7537 70.2961 20.7649 70.2961 13.377C70.2961 5.98901 63.7314 0.000213623 55.6334 0.000213623ZM66.0814 20.863C63.5218 24.3864 56.7692 23.8909 50.9982 19.7565C45.2272 15.6221 42.6257 9.41444 45.1853 5.89099C47.7449 2.36753 54.4976 2.86302 60.2685 6.99744C66.0395 11.1319 68.6411 17.3395 66.0814 20.863Z" fill="#002454"/>
+                <path d="M86.6426 0.000198364C78.5446 0.000198364 71.9799 5.98899 71.9799 13.377C71.9799 20.7649 78.5446 26.7537 86.6426 26.7537C94.7406 26.7537 101.305 20.7649 101.305 13.377C101.305 5.98899 94.7406 0.000198364 86.6426 0.000198364ZM82.0074 19.7565C76.2364 15.6221 73.6349 9.41442 76.1945 5.89097C78.7541 2.36752 85.5068 2.863 91.2778 6.99742C97.0487 11.1318 99.6503 17.3395 97.0907 20.863C94.531 24.3864 87.7784 23.8909 82.0074 19.7565Z" fill="#002454"/>
+                <path d="M136.961 11.2603C136.942 9.88265 136.755 8.46871 136.374 7.14204C135.479 4.02277 133.624 1.59905 130.261 0.473802C129.294 0.150192 128.321 -0.00288477 127.377 0.00248634C126.433 -0.00288477 125.459 0.151535 124.493 0.473802C122.839 1.02703 121.55 1.8958 120.561 3.00494C119.571 1.8958 118.282 1.02703 116.629 0.473802C115.662 0.150192 114.688 -0.00288477 113.744 0.00248634C112.801 -0.00288477 104.121 0.00248634 104.121 0.00248634V26.756H109.792V25.9503C109.792 19.3345 109.792 12.7186 109.792 6.10273C109.792 4.87677 110.126 3.75287 110.955 2.79144C111.72 1.90118 112.749 1.49566 113.744 1.52923C114.74 1.497 115.769 1.90252 116.534 2.79144C117.363 3.75421 117.697 4.87812 117.697 6.10273C117.697 12.7186 117.697 19.3345 117.697 25.9503V26.756H123.424V25.9503C123.424 19.3345 123.424 12.7186 123.424 6.10273C123.424 4.87677 123.758 3.75287 124.587 2.79144C125.353 1.90118 126.382 1.49566 127.377 1.52923C128.372 1.497 129.401 1.90252 130.166 2.79144C130.995 3.75421 131.329 4.87812 131.329 6.10273C131.329 12.7186 131.329 19.3345 131.329 25.9503V26.756H136.987V26.0081C136.987 21.0922 137.03 16.1763 136.962 11.2617L136.961 11.2603Z" fill="#002454"/>
+            </svg>
+        </div>
+        <div class="character">
+            <span>
+                <img src="https://cdn.imweb.me/upload/S20200901a942bae14250b/9e52eed82c307.png" alt="슬루미">
+            </span>
+        </div>
+        <div class="contentsBox">
+            <h1>나에게 맞는 슬룸 제품 찾기</h1>
+            <p>
+                정형외과 전문의 자문 설계 기준을 바탕으로 <br/>
+                부위별 고민에 맞는 슬룸 제품을 추천해드립니다.
+            </p>
+            <div class="cardBox">
+                <ul>
+                    <li>
+                        <span>📍</span>
+                        <p>관리부위</p>
+                    </li>
+                    <li>
+                        <span>🚶</span>
+                        <p>생활패턴</p>
+                    </li>
+                    <li>
+                        <span>✋</span>
+                        <p>사용방식</p>
+                    </li>
+                    <li>
+                        <span>💭</span>
+                        <p>주요고민</p>
+                    </li>
+                </ul>
+            </div>
+            <div class="quizeBtn">
+                <a href="/index.html">전문가 진단 시작하기<span>></span></a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
