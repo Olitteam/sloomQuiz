@@ -845,11 +845,8 @@
             </a>
           </div>
             <div class="chatLabel">
-             <p><a href="https://sloom.channel.io/home"> ${escapeHtml(
-                CONFIG.templates.chat_label ||
-                  "제품이 더 궁금하시다면 24시간 1:1 상담으로 언제든 문의해 주세요.",
-              )}</a>
-              </p>
+             <p><a href="https://sloom.channel.io/home"> 제품이 더 궁금하시다면 <strong>24시간 1:1 상담</strong>으로\n 언제든 문의해 주세요.</a>
+            </p>
            </div>  
           <div class="alts">
             <h3>
