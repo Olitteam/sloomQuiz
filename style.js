@@ -1411,7 +1411,7 @@ function renderResult(
           rel="noopener"
           data-track-consultation="1"
         >
-          제품이 더 궁금하시다면 <strong>24시간 1:1 상담</strong>으로\n 언제든 문의해 주세요.
+          제품이 더 궁금하시다면 <strong>24시간 1:1 상담</strong>으로<br>  언제든 문의해 주세요.
         </a> 
       </p>
     </div>
