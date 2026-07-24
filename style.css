@@ -369,7 +369,7 @@
          9. 모바일 대응
          ========================================================= */
       @media (max-width: 480px) {
-          .chatLabel p { font-size: 12px;  }
+        .chatLabel p { font-size: 12px; white-space: pre-line; line-height: 1.5; }
         .wrap {
           padding-top: 28px;
         }
